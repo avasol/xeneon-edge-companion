@@ -1,0 +1,11 @@
+{
+  "en": {
+    "widget_name": "Galadriel — Lady of Light",
+    "setting_tower_url": "Tower URL",
+    "setting_tower_url_desc": "e.g. http://localhost:8080",
+    "setting_edge_token": "Edge Token",
+    "setting_edge_token_desc": "Your EDGE_TOKEN from .env",
+    "setting_poll_interval": "Poll Interval (seconds)",
+    "setting_poll_interval_desc": "How often to check for new messages from Galadriel (2–30)"
+  }
+}

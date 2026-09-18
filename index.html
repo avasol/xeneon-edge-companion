@@ -1,0 +1,2904 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="x-icue-sizes" content="L,XL">
+
+<meta name="x-icue-property" content="towerUrl"    data-type="textfield"
+      data-label="'Tower URL'"    data-default="'http://localhost:8080'">
+<meta name="x-icue-property" content="edgeToken"   data-type="textfield"
+      data-label="'Edge Token'"   data-default="''">
+<meta name="x-icue-property" content="pollSecs"    data-type="slider"
+      data-label="'Poll interval (s)'" data-default="3"
+      data-min="2" data-max="30" data-step="1" data-unit-label="'s'">
+
+<script type="application/json" id="x-icue-groups">
+[{"title": "'Connection'", "properties": ["towerUrl", "edgeToken", "pollSecs"]}]
+</script>
+<title>'Galadriel — Lady of Light'</title>
+
+<style>
+/* ═══════════════════════════════════════════════════════════════
+   RESET + ROOT
+   ═══════════════════════════════════════════════════════════════ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* ══════════════════════════════════════════════════════════
+   THEME BLOCK — swap only this section to reskin.
+   Current: Elven Silver (white · black · silver · grey)
+   Other themes: see /edge_widget/themes/ for presets.
+   ══════════════════════════════════════════════════════════ */
+:root {
+  /* ── Backgrounds ── */
+  --bg:          #08080c;        /* near-black, cold */
+  --panel:       #0e0e14;
+  --panel2:      #141420;
+  --topbar-bg:   rgba(8,8,12,0.97);
+
+  /* ── Primary accent — Silver (replaces teal) ── */
+  --pri:         #b8cce0;        /* muted steel-blue silver */
+  --pri-dim:     #374860;
+  --pri-mid:     #7090b0;
+  --pri-glow:    rgba(184,204,224,0.14);
+  --pri-rgb:     184,204,224;    /* for inline rgba() use */
+
+  /* ── Secondary accent — White / near-white (replaces gold) ── */
+  --sec:         #dde0ec;        /* warm off-white */
+  --sec-bright:  #f2f4fc;        /* almost pure white */
+  --sec-dim:     #484858;
+  --sec-glow:    rgba(221,224,236,0.10);
+  --sec-rgb:     221,224,236;    /* for inline rgba() use */
+
+  /* ── Text ── */
+  --text:        #b8c8d8;
+  --text-dim:    #344050;
+  --text-sec:    #dde0ec;        /* was text-gold */
+
+  /* ── Borders ── */
+  --border:      rgba(184,204,224,0.12);
+  --border-g:    rgba(221,224,236,0.14);
+  --border-bright: rgba(184,204,224,0.30);
+
+  /* ── Status colours — keep semantic, rarely change ── */
+  --status-offline: #c06060;
+  --status-error:   #c06060;
+
+  /* ── Layout ── */
+  --radius:      8px;
+  --w-left:      460px;
+  --w-right:     190px;
+  --header-h:    42px;    /* pins #chat-header's exact height so #left-panel
+                             can compensate with matching padding-top and both
+                             columns' centered content lines up vertically */
+}
+
+html, body {
+  width: 100vw; height: 100vh;
+  overflow: hidden;
+  background: var(--bg);
+  font-family: 'Courier New', 'Segoe UI', monospace;
+  font-size: 26px;
+  color: var(--text);
+  user-select: none;
+  padding: 6px;
+}
+
+/* ── Scanline texture overlay ── */
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background-image: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 3px,
+    rgba(0,0,0,0.06) 3px,
+    rgba(0,0,0,0.06) 4px
+  );
+  pointer-events: none; z-index: 0;
+}
+
+/* ── Star field ── */
+body::after {
+  content: '';
+  position: fixed; inset: 0;
+  background-image:
+    radial-gradient(1px 1px at  8% 15%, rgba(184,204,224,0.35) 0%, transparent 100%),
+    radial-gradient(1px 1px at 22% 72%, rgba(184,204,224,0.20) 0%, transparent 100%),
+    radial-gradient(1px 1px at 37% 31%, rgba(221,224,236,0.25) 0%, transparent 100%),
+    radial-gradient(1px 1px at 51% 85%, rgba(184,204,224,0.15) 0%, transparent 100%),
+    radial-gradient(1px 1px at 65% 48%, rgba(184,204,224,0.22) 0%, transparent 100%),
+    radial-gradient(1px 1px at 78% 18%, rgba(221,224,236,0.18) 0%, transparent 100%),
+    radial-gradient(1px 1px at 91% 65%, rgba(184,204,224,0.28) 0%, transparent 100%),
+    radial-gradient(1px 1px at 14% 90%, rgba(221,224,236,0.15) 0%, transparent 100%),
+    radial-gradient(1px 1px at 43% 55%, rgba(184,204,224,0.12) 0%, transparent 100%),
+    radial-gradient(1px 1px at 88% 38%, rgba(221,224,236,0.20) 0%, transparent 100%);
+  pointer-events: none; z-index: 0;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   ROOT GRID — header | main | footer
+   ═══════════════════════════════════════════════════════════════ */
+#root {
+  position: relative; z-index: 1;
+  display: grid;
+  grid-template-rows: 68px 1fr 140px;
+  width: 100%; height: 100%;
+  border: 1px solid var(--border-bright);
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--bg);
+  box-shadow: 0 0 60px rgba(184,204,224,0.06), inset 0 0 100px rgba(0,0,0,0.4);
+}
+
+/* Outer corner brackets — like the reference image */
+#root::before, #root::after {
+  content: '';
+  position: absolute;
+  width: 32px; height: 32px;
+  border-color: var(--pri);
+  border-style: solid;
+  opacity: 0.5;
+  z-index: 20;
+  pointer-events: none;
+}
+#root::before { top: 0; left: 0; border-width: 2px 0 0 2px; }
+#root::after  { bottom: 0; right: 0; border-width: 0 2px 2px 0; }
+
+/* ═══════════════════════════════════════════════════════════════
+   TOP BAR — "TOWER ONLINE · AI COMMUNICATIONS TERMINAL · TIME"
+   ═══════════════════════════════════════════════════════════════ */
+#topbar {
+  display: flex;
+  align-items: center;
+  padding: 0 40px;
+  gap: 28px;
+  background: var(--topbar-bg);
+  border-bottom: 1px solid var(--border);
+  font-size: 18px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  position: relative;
+}
+
+/* Decorative tick lines like the reference */
+#topbar::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg,
+    transparent 0%,
+    var(--pri-dim) 15%,
+    var(--pri) 50%,
+    var(--pri-dim) 85%,
+    transparent 100%);
+  opacity: 0.4;
+}
+
+#topbar .sep {
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--border-bright), transparent);
+  opacity: 0.3;
+}
+
+#topbar .brand {
+  color: var(--pri);
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  font-size: 20px;
+  text-shadow: 0 0 12px var(--pri);
+}
+
+/* Status dot */
+#status-dot {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  background: #333;
+  flex-shrink: 0;
+  transition: background 0.4s, box-shadow 0.4s;
+}
+#status-dot.online  { background: var(--pri); box-shadow: 0 0 8px var(--pri), 0 0 20px rgba(184,204,224,0.4); }
+#status-dot.offline { background: var(--status-offline); box-shadow: 0 0 6px var(--status-offline); }
+#status-dot.sending { background: var(--sec); box-shadow: 0 0 8px var(--sec); animation: pulse-sec 0.8s infinite; }
+
+#status-text { font-size: 18px; color: var(--pri); letter-spacing: 0.15em; }
+
+/* EKG waveform (decorative SVG line after the dot) */
+#ekg-line {
+  width: 80px; height: 24px;
+  opacity: 0.5;
+}
+
+#topbar-center {
+  display: flex; align-items: center; gap: 16px;
+  color: var(--text-dim);
+  font-size: 17px;
+  letter-spacing: 0.18em;
+}
+#topbar-center .leaf { color: var(--sec); opacity: 0.6; font-size: 20px; }
+
+#topbar-right {
+  display: flex; align-items: center; gap: 20px;
+  font-size: 17px;
+}
+#topbar-era   { color: var(--sec-dim); letter-spacing: 0.1em; }
+#topbar-loc   { color: var(--text-dim); }
+#topbar-time  { color: var(--pri); font-variant-numeric: tabular-nums; font-size: 20px;
+                text-shadow: 0 0 8px var(--pri);
+                contain: layout style;
+                display: inline-block;
+                width: 120px;
+                height: 24px;
+                line-height: 24px;
+                text-align: right;
+                transform: translateZ(0); }
+
+@keyframes pulse-sec { 0%,100%{opacity:1} 50%{opacity:0.3} }
+@keyframes pulse-teal { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+/* ═══════════════════════════════════════════════════════════════
+   MAIN — left card | chat panel
+   ═══════════════════════════════════════════════════════════════ */
+#main {
+  display: grid;
+  grid-template-columns: var(--w-left) 1fr var(--w-right);
+  overflow: hidden;
+  min-height: 0;
+  contain: layout style;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   LEFT PANEL — GALADRIEL CARD
+   (matches the "portrait card" from the reference)
+   ═══════════════════════════════════════════════════════════════ */
+#left-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 22px;
+  border-right: 1px solid var(--border);
+  background:
+    radial-gradient(ellipse 80% 70% at 50% 40%, rgba(221,224,236,0.06) 0%, transparent 70%),
+    var(--panel);
+  /* padding-top carries the chat-header's height so this column's centered
+     content (portrait+ident) lands on the same vertical center as the chat
+     panel's centered empty-state -- see --header-h. */
+  padding: calc(12px + var(--header-h)) 16px 12px 16px;
+  position: relative;
+  overflow: hidden;
+  min-height: 0;
+  contain: layout style;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+/* Corner bracket accents on the card */
+#left-panel::before, #left-panel::after {
+  content: '';
+  position: absolute;
+  width: 48px; height: 48px;
+  border-color: var(--sec-dim);
+  border-style: solid;
+  opacity: 0.30;
+  z-index: 2;
+}
+#left-panel::before { top: 8px; left: 8px; border-width: 1px 0 0 1px; }
+#left-panel::after  { bottom: 8px; right: 8px; border-width: 0 1px 1px 0; }
+
+/* Glyph dots on left/right edges */
+.left-glyph {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex; flex-direction: column; gap: 14px;
+  opacity: 0.25;
+  font-size: 18px;
+  color: var(--pri-dim);
+  z-index: 2;
+}
+
+/* ── THE MIRROR — replaces the orb ── */
+#mirror-wrap {
+  position: relative;
+  width: 300px; height: 300px;
+  flex-shrink: 0;
+}
+
+/* The mirror image itself — circular crop */
+#mirror-img {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  object-position: center 40%;   /* frame her face + the scrying basin */
+  filter: brightness(0.85) saturate(0.9);
+  transition: filter 0.4s ease;
+}
+
+/* Thinking state: mirror glows (one-off filter transition) and breathes.
+   STILL WATER (v1.3.20, 2026-09-06): the breathe used to animate filter +
+   drop-shadow on the 300px portrait — a full raster repaint every frame,
+   forever, while thinking. iCUE streams this webview to the Edge over the
+   shared GPU, so any contention from other monitors showed up here as
+   dropped/doubled frames = flicker. Breathe now rides opacity + transform
+   only (compositor-side, no repaint); the glow comes from the pulse rings. */
+#mirror-wrap.thinking #mirror-img {
+  filter: brightness(1.05) saturate(1.2);
+  animation: mirror-breathe 1.4s ease-in-out infinite;
+  will-change: opacity, transform;
+}
+
+@keyframes mirror-breathe {
+  0%, 100% { opacity: 0.88; transform: scale(1); }
+  50%       { opacity: 1;    transform: scale(1.012); }
+}
+
+/* Outer ring — teal scanner line */
+#mirror-ring-outer {
+  position: absolute; inset: -11px;
+  border-radius: 50%;
+  border: 1px solid rgba(184,204,224,0.30);
+  /* STILL WATER: rings rest at idle; they turn only while she thinks.
+     Two infinite spins meant the widget was never still — a per-frame
+     composite for hours, for decoration. */
+  will-change: transform;
+}
+#mirror-wrap.thinking #mirror-ring-outer { animation: spin-slow 32s linear infinite; }
+#mirror-ring-outer::before, #mirror-ring-outer::after {
+  content: '';
+  position: absolute;
+  background: var(--pri);
+  border-radius: 1px;
+}
+#mirror-ring-outer::before { top: -3px; left: 50%; transform: translateX(-50%); width: 2px; height: 11px; }
+#mirror-ring-outer::after  { bottom: -3px; left: 50%; transform: translateX(-50%); width: 2px; height: 11px; }
+
+/* Gold diamond accents at cardinal points */
+#mirror-ring-gold {
+  position: absolute; inset: -19px;
+  border-radius: 50%;
+  border: 1px solid rgba(221,224,236,0.20);
+  will-change: transform;
+}
+#mirror-wrap.thinking #mirror-ring-gold { animation: spin-rev-slow 48s linear infinite; }
+#mirror-ring-gold::before {
+  content: '◆';
+  position: absolute;
+  top: -14px; left: 50%; transform: translateX(-50%);
+  color: var(--sec);
+  font-size: 16px;
+  opacity: 0.6;
+}
+
+/* Inner framing ring */
+#mirror-ring-inner {
+  position: absolute; inset: 5px;
+  border-radius: 50%;
+  border: 1px solid rgba(221,224,236,0.25);
+  pointer-events: none;
+}
+
+/* Thinking pulse ring — radiates outward when active */
+#mirror-pulse {
+  position: absolute; inset: -8px;
+  border-radius: 50%;
+  border: 2px solid var(--sec);
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+#mirror-pulse.active {
+  opacity: 1;
+  animation: mirror-pulse-ring 1.4s ease-out infinite;
+}
+
+@keyframes mirror-pulse-ring {
+  0%   { transform: scale(1);    opacity: 0.9; }
+  50%  { transform: scale(1.06); opacity: 0.5; }
+  100% { transform: scale(1.15); opacity: 0;   }
+}
+#mirror-pulse, #mirror-pulse2 { will-change: transform, opacity; }
+
+/* Secondary pulse — staggered */
+#mirror-pulse2 {
+  position: absolute; inset: -22px;
+  border-radius: 50%;
+  border: 1px solid rgba(184,204,224,0.4);
+  opacity: 0;
+}
+#mirror-pulse2.active {
+  opacity: 1;
+  animation: mirror-pulse-ring 1.4s 0.5s ease-out infinite;
+}
+
+@keyframes spin-slow     { to { transform: rotate(360deg); } }
+@keyframes spin-rev-slow { to { transform: rotate(-360deg); } }
+
+/* STILL WATER: honour the OS "reduce motion" setting — everything decorative
+   goes still; state is still legible through colour and text. */
+@media (prefers-reduced-motion: reduce) {
+  #mirror-wrap.thinking #mirror-ring-outer,
+  #mirror-wrap.thinking #mirror-ring-gold,
+  #mirror-wrap.thinking #mirror-img,
+  #mirror-pulse.active, #mirror-pulse2.active,
+  #status-dot { animation: none !important; }
+}
+
+/* ── IDENTITY BLOCK ── */
+#ident {
+  text-align: center;
+  line-height: 1.35;
+  position: relative; z-index: 2;
+}
+#ident .name {
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: 0.30em;
+  color: var(--sec-bright);
+  text-transform: uppercase;
+  text-shadow: 0 0 20px rgba(221,224,236,0.5), 0 0 40px rgba(221,224,236,0.2);
+}
+#ident .title-line {
+  font-size: 15px;
+  letter-spacing: 0.16em;
+  color: var(--pri-mid);
+  text-transform: uppercase;
+  margin-top: 3px;
+  /* thin decorative lines flanking the title */
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+}
+#ident .title-line::before, #ident .title-line::after {
+  content: '';
+  flex: 1; max-width: 28px; height: 1px;
+  background: var(--pri-dim);
+  opacity: 0.5;
+}
+
+
+
+/* ── STAT PILLS ── */
+/* Stats now live in #footer-left (the reclaimed wavelength real estate),
+   laid out as a 2x2 grid rather than the tall stack the left panel used. */
+#stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 7px 22px;
+  width: 100%;
+}
+.stat-row {
+  font-size: 19px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 5px 14px;
+  background: rgba(184,204,224,0.03);
+  border: 1px solid rgba(184,204,224,0.10);
+  border-radius: 3px;
+  font-size: 16px;
+  color: var(--text-dim);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.stat-row .val { color: var(--pri); font-variant-numeric: tabular-nums; }
+.stat-row.stat-build { opacity: 0.6; font-size: 17px; }
+
+/* Thinking indicator — overlaid on the portrait, doesn't displace it */
+#typing-dots {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: none;
+  gap: 7px;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  pointer-events: none;
+}
+#typing-dots.visible { display: flex; }
+#typing-dots span {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--sec);
+  animation: dot-bounce 1.2s ease-in-out infinite;
+  box-shadow: 0 0 8px var(--sec), 0 0 2px rgba(0,0,0,0.8);
+}
+#typing-dots span:nth-child(2) { animation-delay: 0.2s; background: var(--pri); box-shadow: 0 0 8px var(--pri), 0 0 2px rgba(0,0,0,0.8); }
+#typing-dots span:nth-child(3) { animation-delay: 0.4s; background: var(--sec); box-shadow: 0 0 8px var(--sec), 0 0 2px rgba(0,0,0,0.8); }
+@keyframes dot-bounce { 0%,80%,100%{transform:translateY(0)} 40%{transform:translateY(-9px)} }
+
+/* ═══════════════════════════════════════════════════════════════
+   RIGHT — CHAT PANEL
+   ═══════════════════════════════════════════════════════════════ */
+#chat-panel {
+  display: flex;
+  flex-direction: column;
+  background: var(--panel);
+  position: relative;
+  min-height: 0;
+  overflow: hidden;
+  contain: layout style;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+/* Thin teal vertical accent on far right */
+#chat-panel::before {
+  content: '';
+  position: absolute;
+  top: 0; bottom: 0; right: 0;
+  width: 1px;
+  background: linear-gradient(180deg, transparent, var(--pri-dim), transparent);
+  opacity: 0.25;
+  z-index: 5;
+}
+
+/* Corner bracket — top right */
+#chat-panel::after {
+  content: '';
+  position: absolute;
+  width: 48px; height: 48px;
+  top: 0; right: 0;
+  border-color: var(--pri-dim);
+  border-style: solid;
+  border-width: 2px 2px 0 0;
+  opacity: 0.30;
+  pointer-events: none;
+  z-index: 5;
+}
+
+/* ── SECURE CHANNEL HEADER ── */
+#chat-header {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  height: var(--header-h);
+  box-sizing: border-box;
+  padding: 0 36px;
+  border-bottom: 1px solid var(--border);
+  font-size: 17px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  flex-shrink: 0;
+  position: relative;
+}
+/* Center label glow */
+#chat-header::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 10%; right: 10%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--pri), transparent);
+  opacity: 0.2;
+}
+
+#chat-header .lock   { color: var(--pri); font-size: 20px; }
+#chat-header .ch-name { color: var(--pri); text-shadow: 0 0 8px var(--pri); }
+#chat-header .ch-sep { opacity: 0.2; }
+#chat-header .dash   { display: flex; align-items: center; gap: 8px; font-size: 15px; }
+#chat-header .dash::before, #chat-header .dash::after {
+  content: ''; flex: 1; height: 1px;
+  background: var(--border); display: none;
+}
+
+#new-btn {
+  margin-left: auto;
+  background: none;
+  border: 1px solid rgba(184,204,224,0.20);
+  color: var(--text-dim);
+  padding: 5px 18px;
+  border-radius: 3px;
+  font-size: 16px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  cursor: pointer;
+  font-family: inherit;
+  transition: border-color 0.2s, color 0.2s, box-shadow 0.2s;
+}
+#new-btn:hover {
+  border-color: var(--pri);
+  color: var(--pri);
+  box-shadow: 0 0 10px rgba(184,204,224,0.15);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   RIGHT RAIL — SPECIAL COMMANDS
+   ═══════════════════════════════════════════════════════════════ */
+#right-rail {
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid var(--border);
+  background: var(--panel);
+  padding: calc(12px + var(--header-h)) 14px 12px 14px;
+  gap: 10px;
+  position: relative;
+  overflow: hidden;
+  min-height: 0;
+}
+#right-rail::before, #right-rail::after {
+  content: '';
+  position: absolute;
+  width: 36px; height: 36px;
+  border-color: var(--sec-dim);
+  border-style: solid;
+  opacity: 0.30;
+  z-index: 2;
+}
+#right-rail::before { top: 8px; right: 8px; border-width: 1px 1px 0 0; }
+#right-rail::after  { bottom: 8px; left: 8px; border-width: 0 0 1px 1px; }
+#right-rail-title {
+  font-size: 16px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--pri-mid);
+  text-align: center;
+  margin-bottom: 4px;
+  display: flex; align-items: center; gap: 8px;
+}
+#right-rail-title::before, #right-rail-title::after {
+  content: ''; flex: 1; height: 1px; background: var(--pri-dim); opacity: 0.5;
+}
+.special-cmd-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: 1px solid rgba(184,204,224,0.20);
+  color: var(--text-dim);
+  padding: 14px 10px;
+  border-radius: 4px;
+  font-size: 18px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  font-family: inherit;
+  transition: border-color 0.2s, color 0.2s, box-shadow 0.2s;
+}
+.special-cmd-btn .cmd-icon { font-size: 28px; }
+.special-cmd-btn:hover {
+  border-color: var(--pri);
+  color: var(--pri);
+  box-shadow: 0 0 10px rgba(184,204,224,0.15);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   MEDIA OVERLAY — the "Media" special command
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Link sheet (replaces native window.prompt — out of theme and
+   unresponsive in the iCUE webview, field wound 2026-09-05) ── */
+#link-sheet {
+  position: absolute; inset: 0; z-index: 120;
+  display: none; align-items: center; justify-content: center;
+  background: rgba(4,4,8,0.88);
+}
+#link-sheet.open { display: flex; }
+#link-sheet .sheet {
+  width: min(88%, 640px);
+  background: var(--panel);
+  border: 1px solid rgba(184,204,224,0.28);
+  box-shadow: 0 0 28px var(--pri-glow), 0 0 2px var(--pri);
+  border-radius: 4px;
+  padding: 18px 22px 16px;
+}
+#link-sheet .sheet-title {
+  font-size: 13px; letter-spacing: 0.22em; text-transform: uppercase;
+  color: var(--sec-bright); text-shadow: 0 0 10px rgba(221,224,236,0.35);
+  margin-bottom: 12px;
+}
+#link-sheet .sheet-body {
+  font-family: 'Courier New', monospace; font-size: 14px; line-height: 1.5;
+  color: var(--pri); background: var(--bg);
+  border: 1px solid var(--border); border-radius: 3px;
+  padding: 10px 12px; max-height: 40vh; overflow: auto;
+  word-break: break-all; white-space: pre-wrap; user-select: text;
+}
+#link-sheet .sheet-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 14px; }
+#link-sheet .sheet-btn {
+  background: none; border: 1px solid rgba(184,204,224,0.20); color: var(--text-dim);
+  padding: 5px 16px; border-radius: 3px; font-size: 13px; letter-spacing: 0.12em;
+  text-transform: uppercase; cursor: pointer; font-family: inherit;
+}
+#link-sheet .sheet-btn:hover { border-color: var(--pri); color: var(--pri); }
+#link-sheet .sheet-btn.primary { border-color: rgba(184,204,224,0.45); color: var(--sec-bright); }
+
+#media-overlay {
+  position: absolute; inset: 0;
+  z-index: 100;
+  display: none;
+  background: rgba(4,4,8,0.96);
+  /* no backdrop-filter (2026-08-30): forced a continuous per-frame
+     recomposite against the mirror's always-spinning rings underneath —
+     flicker in the sandboxed Widgets webview for near-zero visible gain
+     at this opacity. Bumped opacity slightly (0.92->0.96) to compensate. */
+  flex-direction: column;
+  padding: 20px 36px;
+}
+/* Pause everything animating behind a full-screen overlay — it's fully
+   hidden anyway, so it was pure wasted paint/composite work while open
+   (2026-08-30, companion fix to the backdrop-filter removal above). */
+body.overlay-open #mirror-ring-outer,
+body.overlay-open #mirror-ring-gold,
+body.overlay-open #mirror-pulse,
+body.overlay-open #mirror-pulse2,
+body.overlay-open #mirror-img {
+  animation-play-state: paused !important;
+}
+#media-overlay.open { display: flex; }
+#media-overlay-header {
+  display: flex; align-items: center; gap: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 14px;
+  flex-shrink: 0;
+}
+#media-overlay-header .title {
+  font-size: 20px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--sec-bright);
+  text-shadow: 0 0 12px rgba(221,224,236,0.4);
+}
+#media-overlay-header .count {
+  color: var(--text-dim);
+  font-size: 15px;
+}
+#media-close-btn {
+  margin-left: auto;
+  background: none;
+  border: 1px solid rgba(184,204,224,0.20);
+  color: var(--text-dim);
+  padding: 5px 18px;
+  border-radius: 3px;
+  font-size: 15px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  cursor: pointer;
+  font-family: inherit;
+}
+#media-close-btn:hover { border-color: var(--pri); color: var(--pri); }
+#media-list {
+  flex: 1;
+  overflow-y: auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 16px;
+  align-content: start;
+}
+.media-item {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--panel2);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.media-item .media-thumb {
+  width: 100%; max-height: 200px; object-fit: cover;
+  border-radius: 4px;
+  background: #000;
+}
+.media-item .media-tags {
+  display: flex; flex-wrap: wrap; gap: 6px;
+  font-size: 12px;
+}
+.media-tag {
+  border: 1px solid rgba(184,204,224,0.25);
+  color: var(--pri-mid);
+  border-radius: 3px;
+  padding: 2px 8px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.media-tag.type-image { color: var(--sec); border-color: rgba(221,224,236,0.3); }
+.media-tag.type-audio { color: var(--pri); }
+.media-tag.missing { color: var(--status-offline); border-color: var(--status-offline); }
+.media-item .media-prompt {
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--text);
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 160px;
+  overflow-y: auto;
+}
+.media-item audio { width: 100%; }
+.media-lost-toggle {
+  grid-column: 1 / -1;
+  cursor: pointer;
+  color: var(--text-dim);
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 8px 4px;
+  border-top: 1px solid var(--border);
+  user-select: none;
+}
+.media-lost-toggle:hover { color: var(--sec); }
+.media-lost-toggle .arrow { display: inline-block; width: 1em; }
+.media-lost-list {
+  grid-column: 1 / -1;
+  display: none;
+  flex-direction: column;
+  gap: 8px;
+}
+.media-lost-list.open { display: flex; }
+.media-item.lost {
+  opacity: 0.55;
+  flex-direction: row;
+  align-items: baseline;
+  gap: 12px;
+}
+.media-item.lost .media-prompt { max-height: none; }
+#media-empty {
+  color: var(--text-dim);
+  text-align: center;
+  margin-top: 60px;
+  font-size: 16px;
+  letter-spacing: 0.1em;
+}
+
+
+/* ═══════ INSPECT OVERLAY (Status & Logs) ═══════ */
+#inspect-overlay {
+  position: absolute; inset: 0;
+  z-index: 101;
+  background: rgba(8, 8, 14, 0.97);
+  padding: 24px 32px;
+  display: none;
+  flex-direction: column;
+  gap: 14px;
+  box-sizing: border-box;
+}
+#inspect-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+#inspect-title {
+  font-size: 24px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--sec-bright);
+  text-shadow: 0 0 10px rgba(221,224,236,0.3);
+}
+#inspect-state {
+  flex: 1;
+  font-size: 17px;
+  color: var(--text-dim);
+  letter-spacing: 0.04em;
+}
+#inspect-content {
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+  user-select: text;
+  -webkit-user-select: text;
+  background: #050609;
+  border: 1px solid rgba(184,204,224,0.12);
+  border-radius: 6px;
+  padding: 12px 16px;
+}
+#inspect-content::-webkit-scrollbar { width: 5px; }
+#inspect-content::-webkit-scrollbar-thumb { background: rgba(184,204,224,0.2); border-radius: 3px; }
+
+#inspect-content.status-view {
+  font-family: inherit;
+  font-size: 22px;
+  line-height: 1.6;
+  white-space: normal;
+  padding: 16px 20px;
+}
+#inspect-content.status-view h1, #inspect-content.status-view h2, #inspect-content.status-view h3 {
+  color: var(--sec-bright);
+  margin-bottom: 8px;
+}
+#inspect-content.status-view pre {
+  background: rgba(0,0,0,0.4);
+  padding: 8px 12px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  overflow-x: auto;
+  font-family: 'Consolas', monospace;
+  font-size: 18px;
+}
+#inspect-content.status-view code {
+  font-family: 'Consolas', monospace;
+  color: var(--pri);
+}
+
+#inspect-content.logs-view {
+  font-family: 'Consolas', 'Cascadia Code', 'JetBrains Mono', monospace;
+  font-size: 18px;
+  line-height: 1.45;
+  white-space: normal;
+  background: #050609;
+  border: 1px solid rgba(184,204,224,0.12);
+  border-radius: 6px;
+  padding: 12px 14px;
+}
+.log-entry {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  padding: 2px 4px;
+  border-radius: 3px;
+  word-break: break-word;
+}
+.log-entry:hover {
+  background: rgba(255,255,255,0.03);
+}
+.log-entry.lvl-warning {
+  background: rgba(229, 169, 60, 0.06);
+}
+.log-entry.lvl-error, .log-entry.lvl-critical {
+  background: rgba(224, 82, 82, 0.10);
+}
+.log-time {
+  color: #556677;
+  font-size: 11px;
+  flex-shrink: 0;
+  user-select: none;
+}
+.log-tag {
+  color: #7090b0;
+  font-size: 11px;
+  flex-shrink: 0;
+  font-weight: 500;
+}
+.log-tag.tag-galadriel {
+  color: #d4af37;
+  font-weight: 600;
+}
+.log-tag.tag-httpx {
+  color: #4a6b82;
+}
+.log-tag.tag-mempalace {
+  color: #8c7aa8;
+}
+.log-lvl {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  min-width: 36px;
+  flex-shrink: 0;
+  color: #5c7e9f;
+}
+.lvl-warning .log-lvl { color: #e5a93c; }
+.lvl-error .log-lvl, .lvl-critical .log-lvl { color: #f05a5a; }
+.log-body {
+  color: #c4d0dc;
+  flex: 1;
+}
+.lvl-error .log-body { color: #f5a0a0; }
+.lvl-warning .log-body { color: #eed090; }
+
+.log-misc {
+  color: #99a8b8;
+}
+.log-misc .log-body {
+  margin-left: 10px;
+  color: #8a99a8;
+}
+
+#inspect-footer {
+  font-size: 11px;
+  color: var(--text-dim);
+  letter-spacing: 0.04em;
+}
+
+/* ── MESSAGE LIST ── */
+#messages {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 16px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  scroll-behavior: smooth;
+}
+#messages::-webkit-scrollbar { width: 3px; }
+#messages::-webkit-scrollbar-track { background: transparent; }
+#messages::-webkit-scrollbar-thumb { background: var(--pri-dim); border-radius: 2px; }
+
+/* ── BUBBLES ── */
+.msg {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  animation: fade-in 0.22s ease;
+  max-width: min(88%, 1500px);
+}
+@keyframes fade-in { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; } }
+
+.msg.gal { align-self: flex-start; }
+.msg.usr { align-self: flex-end; flex-direction: row-reverse; }
+
+/* Avatar sigil — the leaf/snowflake from the reference */
+.msg-avatar {
+  width: 50px; height: 50px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  border: 1px solid;
+  margin-top: 2px;
+}
+.msg.gal .msg-avatar {
+  background: radial-gradient(circle, rgba(184,204,224,0.15) 0%, transparent 70%);
+  border-color: rgba(184,204,224,0.30);
+  color: var(--pri);
+  box-shadow: 0 0 10px rgba(184,204,224,0.10);
+}
+.msg.usr .msg-avatar {
+  background: radial-gradient(circle, rgba(221,224,236,0.12) 0%, transparent 70%);
+  border-color: rgba(221,224,236,0.25);
+  color: var(--sec);
+}
+
+/* Bubble — gold-bordered for Galadriel, teal for user (reference reversed) */
+.bubble {
+  padding: 14px 22px;
+  border-radius: 6px;
+  font-size: 25px;
+  line-height: 1.55;
+  position: relative;
+  max-width: 100%;
+  word-break: break-word;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+}
+/* I-006 (v1.3.21): body sets user-select:none for a chrome-like feel, which
+   also made every reply unmarkable — Lord Isildur had to ask for a URL on
+   Discord instead. Text inside bubbles is selectable again; chrome stays
+   unselectable. */
+.bubble, .bubble * { user-select: text; -webkit-user-select: text; cursor: text; }
+.bubble a, .bubble button, .bubble .copy-btn { cursor: pointer; }
+.bubble ::selection { background: rgba(184,204,224,0.35); color: #fff; }
+.msg.gal .bubble {
+  background: rgba(221,224,236,0.05);
+  border: 1px solid rgba(221,224,236,0.22);
+  color: var(--text);
+  border-top-left-radius: 2px;
+}
+.msg.usr .bubble {
+  background: rgba(184,204,224,0.05);
+  border: 1px solid rgba(184,204,224,0.20);
+  color: var(--text);
+  border-top-right-radius: 2px;
+}
+
+.msg-time {
+  font-size: 15px;
+  color: var(--text-dim);
+  margin-top: 3px;
+  opacity: 0.55;
+  letter-spacing: 0.05em;
+  font-family: 'Courier New', monospace;
+}
+.msg.usr .msg-time { text-align: right; }
+.msg-cost { opacity: .55; font-variant-numeric: tabular-nums; cursor: help; }
+
+.msg.err .bubble {
+  background: rgba(224,82,82,0.06);
+  border-color: rgba(224,82,82,0.20);
+  color: var(--status-error);
+}
+
+/* Delivery state for a user bubble — the send is optimistic, so we mark
+   it undelivered until the server actually confirms (a 'done' event).
+   Silent, forever-orphaned bubbles were the bug (2026-08-27). */
+.msg.usr.pending .bubble {
+  opacity: 0.55;
+  border-style: dashed;
+}
+.msg.usr.failed .bubble {
+  border-color: var(--status-error);
+  opacity: 0.9;
+}
+.msg-retry {
+  background: none;
+  border: 1px solid rgba(224,82,82,0.35);
+  color: var(--status-error);
+  font-size: 13px;
+  font-family: 'Courier New', monospace;
+  letter-spacing: 0.05em;
+  padding: 2px 8px;
+  border-radius: 3px;
+  cursor: pointer;
+  margin-left: 8px;
+}
+.msg-retry:hover { background: rgba(224,82,82,0.10); }
+
+/* ── Approval card (red-tier tool call awaiting Lord Isildur's Yes/No) ── */
+.msg.approval .bubble {
+  background: rgba(224,180,82,0.07);
+  border-color: rgba(224,180,82,0.30);
+  color: var(--text);
+}
+.approval-label {
+  font-size: 14px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #e0b452;
+  margin-bottom: 8px;
+}
+.approval-cmd {
+  font-family: 'Courier New', monospace;
+  font-size: 19px;
+  background: rgba(0,0,0,0.35);
+  border: 1px solid rgba(224,180,82,0.20);
+  border-radius: 4px;
+  padding: 8px 12px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--text);
+  margin-bottom: 10px;
+}
+.approval-actions { display: flex; gap: 12px; }
+.approval-btn {
+  font-family: 'Courier New', monospace;
+  font-size: 15px;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  padding: 7px 18px;
+  border-radius: 4px;
+  cursor: pointer;
+  background: rgba(255,255,255,0.03);
+  transition: filter 0.15s, box-shadow 0.15s;
+}
+.approval-btn.yes { border: 1px solid rgba(120,200,140,0.45); color: #8fd6a0; }
+.approval-btn.no  { border: 1px solid rgba(224,96,96,0.45);   color: #e08080; }
+.approval-btn:hover { filter: brightness(1.25); }
+.approval-btn.yes:hover { box-shadow: 0 0 12px rgba(120,200,140,0.25); }
+.approval-btn.no:hover  { box-shadow: 0 0 12px rgba(224,96,96,0.25); }
+.approval-resolved {
+  font-size: 15px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  opacity: 0.8;
+}
+.approval-resolved.err { color: var(--status-error); }
+
+/* Empty state — matches reference "The mirror is still" */
+#empty-state {
+  flex: 1;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 14px;
+  color: var(--text-dim);
+  font-size: 18px;
+  letter-spacing: 0.20em;
+  text-transform: uppercase;
+  opacity: 0.55;
+  pointer-events: none;
+  font-family: 'Courier New', monospace;
+}
+#empty-state .rune { font-size: 44px; opacity: 0.22; color: var(--pri); }
+
+/* Streaming cursor */
+.streaming-bubble .response-status {
+  margin-bottom: 6px;
+}
+.streaming-bubble::after {
+  content: '▋';
+  display: inline-block;
+  font-size: 16px;
+  line-height: 1;
+  vertical-align: middle;
+  animation: blink 0.7s step-end infinite;
+  color: var(--pri);
+  margin-left: 2px;
+}
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+/* ═══════════════════════════════════════════════════════════════
+   FOOTER — INPUT BAR
+   (left: waveform/mic column | right: input + send crystal)
+   ═══════════════════════════════════════════════════════════════ */
+#footer {
+  display: grid;
+  grid-template-columns: var(--w-left) 1fr var(--w-right);
+  height: 140px;
+  border-top: 1px solid var(--border);
+  background: var(--topbar-bg);
+  flex-shrink: 0;
+  position: relative; z-index: 10;
+  contain: layout style;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+/* Glowing top line on footer */
+#footer::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 5%; right: 5%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--pri), transparent);
+  opacity: 0.25;
+}
+
+/* ── Left footer: was a purely decorative idle waveform (~50px tall,
+   did nothing but pulse during thinking); now hosts the session stats
+   moved down from the left panel, with the waveform demoted to a slim
+   ambient accent strip beneath them -- it still pulses while thinking,
+   just no longer occupies the whole column. ── */
+#footer-left {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 26px;
+  border-right: 1px solid var(--border);
+  position: relative;
+}
+
+#waveform {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 4px;
+  height: 14px;
+  padding: 0;
+  opacity: 0.6;
+}
+#waveform span {
+  display: block;
+  width: 3px;
+  border-radius: 1px;
+  background: var(--pri-dim);
+  opacity: 0.4;
+  transition: height 0.15s ease, background 0.2s;
+}
+/* Static heights — idle waveform, now a slim accent rather than the centerpiece */
+#waveform span:nth-child(1)  { height: 4px; }
+#waveform span:nth-child(2)  { height: 8px; }
+#waveform span:nth-child(3)  { height: 6px; }
+#waveform span:nth-child(4)  { height: 11px; }
+#waveform span:nth-child(5)  { height: 7px; }
+#waveform span:nth-child(6)  { height: 13px; }
+#waveform span:nth-child(7)  { height: 9px; }
+#waveform span:nth-child(8)  { height: 5px; }
+#waveform span:nth-child(9)  { height: 10px; }
+#waveform span:nth-child(10) { height: 4px; }
+
+#waveform.active span {
+  background: var(--pri);
+  opacity: 0.8;
+  animation: wave-bar 0.8s ease-in-out infinite alternate;
+}
+#waveform.active span:nth-child(even)  { animation-delay: 0.15s; }
+#waveform.active span:nth-child(3n)    { animation-delay: 0.30s; }
+@keyframes wave-bar {
+  from { transform: scaleY(0.4); }
+  to   { transform: scaleY(1.0); }
+}
+
+/* ── Right footer ── */
+#footer-right {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 0 30px 0 36px;
+}
+
+#input-wrap {
+  flex: 1;
+  border: 1px solid rgba(184,204,224,0.18);
+  border-radius: 5px;
+  background: rgba(184,204,224,0.03);
+  padding: 2px 4px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+#input-wrap:focus-within {
+  border-color: rgba(184,204,224,0.45);
+  box-shadow: 0 0 16px rgba(184,204,224,0.08);
+}
+
+#msg-input {
+  width: 100%;
+  background: none;
+  border: none;
+  outline: none;
+  color: var(--text);
+  font-size: 25px;
+  line-height: 1.4;
+  padding: 16px 18px;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  resize: none;
+  max-height: 110px;
+  overflow-y: auto;
+}
+#msg-input::placeholder { color: var(--pri-dim); opacity: 0.6; font-style: italic; }
+#msg-input:disabled { opacity: 0.35; cursor: not-allowed; }
+
+/* ── Send button — the crystal gem from the reference (bottom right) ── */
+#send-btn {
+  width: 88px; height: 88px;
+  flex-shrink: 0;
+  background: none;
+  border: 1px solid rgba(184,204,224,0.28);
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  position: relative;
+  overflow: hidden;
+}
+#send-btn::before {
+  content: '';
+  position: absolute; inset: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle at 38% 32%, rgba(184,204,224,0.18) 0%, transparent 65%);
+}
+#send-btn:hover:not(:disabled) {
+  border-color: var(--pri);
+  box-shadow: 0 0 20px rgba(184,204,224,0.30), 0 0 40px rgba(184,204,224,0.10);
+}
+#send-btn:active:not(:disabled) { transform: scale(0.93); }
+#send-btn:disabled { opacity: 0.25; cursor: not-allowed; }
+#send-btn svg { transition: filter 0.2s; position: relative; z-index: 1; }
+#send-btn:hover:not(:disabled) svg { filter: drop-shadow(0 0 8px var(--pri)); }
+
+/* Send label */
+#send-label {
+  font-size: 16px;
+  color: var(--pri-dim);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  text-align: center;
+  font-family: 'Courier New', monospace;
+  line-height: 1.2;
+  flex-shrink: 0;
+}
+#send-label small { display: block; font-size: 13px; opacity: 0.6; margin-top: 2px; }
+
+/* ── Markdown in bubbles ── */
+.bubble h1,.bubble h2,.bubble h3,.bubble h4,.bubble h5,.bubble h6{margin:10px 0 6px;letter-spacing:.05em}
+.bubble h1{font-size:28px}.bubble h2{font-size:24px}.bubble h3{font-size:21px}.bubble h4{font-size:18px}.bubble h5{font-size:16px}.bubble h6{font-size:14px;opacity:.85}
+.bubble blockquote blockquote{border-left-color:var(--accent,#4fd1c5);opacity:.85;margin:6px 0}
+.bubble p{margin:0 0 8px}
+.bubble ul,.bubble ol{margin:6px 0 6px 24px}
+.bubble li{margin:3px 0}
+.code-wrap{position:relative;margin:8px 0}
+.code-wrap pre{margin:0;padding-right:52px}
+.code-copy-btn{position:absolute;top:6px;right:6px;background:rgba(255,255,255,.08);border:1px solid var(--border);border-radius:4px;color:var(--text-dim);font-size:13px;padding:3px 8px;cursor:pointer;transition:all .15s;line-height:1;z-index:2}
+.code-copy-btn:hover{background:rgba(255,255,255,.18);color:var(--text)}
+.code-copy-btn.copied{color:var(--accent,#4fd1c5);border-color:var(--accent,#4fd1c5)}
+.bubble code.inline-code{cursor:pointer;transition:background .15s, border-color .15s;border:1px solid transparent}
+.bubble code.inline-code:hover{background:rgba(255,255,255,.15);border-color:var(--border)}
+.bubble code.inline-code.copied{background:rgba(79,209,197,.2);border-color:var(--accent,#4fd1c5);color:#fff}
+.bubble pre{background:rgba(0,0,0,.4);border:1px solid var(--border);border-radius:5px;
+            padding:10px 16px;overflow-x:auto;margin:8px 0;font-size:20px;white-space:pre-wrap}
+.bubble code{background:rgba(255,255,255,.06);border-radius:3px;padding:1px 6px;font-size:22px}
+.bubble pre code{background:none;padding:0}
+.bubble blockquote{border-left:3px solid var(--border);margin:8px 0;padding:4px 16px;
+                   color:var(--text-dim);font-style:italic}
+.bubble .table-wrap{overflow-x:auto;margin:8px 0;-webkit-overflow-scrolling:touch}
+.bubble table{border-collapse:collapse;width:100%;font-size:20px;white-space:nowrap}
+.bubble th,.bubble td{border:1px solid var(--border);padding:4px 10px;text-align:left;vertical-align:top}
+.bubble th{color:var(--pri,#ddb892);font-weight:600;background:rgba(255,255,255,.04)}
+.bubble tbody tr:nth-child(even){background:rgba(255,255,255,.02)}
+
+.bubble hr{border:none;border-top:1px solid var(--border);margin:10px 0}
+.bubble a{text-decoration:underline;cursor:pointer}
+
+/* ── Copy button (hover on Galadriel messages) ── */
+.btn-copy {
+  background: none; border: none; cursor: pointer;
+  font-size: 11px; color: var(--text-dim);
+  opacity: 0; transition: opacity .15s;
+  padding: 0 4px; font-family: var(--mono);
+}
+.msg:hover .btn-copy { opacity: 1; }
+.btn-copy.copied { color: var(--pri); opacity: 1; }
+.bubble img.md-img{max-width:100%;max-height:480px;border-radius:6px;
+                   border:1px solid var(--border);display:block;margin:8px 0}
+.bubble audio.md-audio{width:100%;display:block;margin:8px 0;
+                        filter:sepia(.25) saturate(1.4) hue-rotate(150deg) brightness(1.05)}
+.think-block{background:rgba(255,255,255,.03);border:1px solid var(--border);
+             border-radius:5px;margin:6px 0}
+.think-summary{cursor:pointer;padding:6px 14px;font-size:18px;color:var(--text-dim);
+               letter-spacing:.10em;text-transform:uppercase;user-select:none}
+.think-summary:hover{opacity:.8}
+.think-body{padding:8px 16px;font-size:20px;color:var(--text-dim);font-style:italic;
+            border-top:1px solid var(--border);white-space:pre-wrap}
+#img-attach-btn,#doc-attach-btn{display:flex;align-items:center;justify-content:center;
+                width:36px;height:36px;cursor:pointer;font-size:20px;
+                opacity:.55;transition:opacity .2s;flex-shrink:0}
+#img-attach-btn:hover,#doc-attach-btn:hover{opacity:1}
+.doc-chip{display:flex;align-items:center;gap:6px;padding:6px 10px;
+          background:rgba(168,200,232,0.08);border:1px solid var(--border);
+          border-radius:8px;font-size:16px;color:var(--text-dim);flex-shrink:0}
+.doc-chip button{background:none;border:none;color:var(--text-dim);cursor:pointer;
+                  font-size:16px;padding:0 2px;opacity:.7}
+.doc-chip button:hover{opacity:1;color:var(--teal)}
+#img-preview-strip{display:none;flex-direction:row;gap:8px;padding:6px 12px;
+                   border-top:1px solid var(--border);flex-wrap:wrap;flex-shrink:0}
+#img-preview-strip.visible{display:flex}
+.img-thumb-wrap{position:relative;width:80px;height:80px;border:1px solid var(--border);
+                border-radius:5px;overflow:hidden;flex-shrink:0}
+.img-thumb-wrap img{width:100%;height:100%;object-fit:cover}
+.img-thumb-remove{position:absolute;top:2px;right:2px;background:rgba(0,0,0,.7);
+                  border:none;cursor:pointer;font-size:14px;line-height:1;padding:1px 4px;border-radius:3px}
+.response-status{display:inline-block;font-size:16px;line-height:1.6;color:#cbb88e;background:rgba(232,184,120,.08);border:1px solid rgba(232,184,120,.25);border-radius:8px;padding:8px 14px;margin:0 0 14px;overflow-wrap:anywhere;font-family:system-ui,sans-serif}.response-status strong{font-weight:600}.response-status.pending{opacity:0.85;border-style:dashed;color:#a0b8cc;border-color:rgba(160,184,204,0.35);background:rgba(160,184,204,0.06)}
+</style>
+</head>
+
+<body>
+<div id="root">
+
+  <!-- ═══════ TOP BAR ═══════ -->
+  <div id="topbar">
+    <!-- Status cluster -->
+    <div id="status-dot"></div>
+    <span id="status-text">CONNECTING…</span>
+    <!-- EKG line — decorative SVG wave -->
+    <svg id="ekg-line" viewBox="0 0 80 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <polyline points="0,12 10,12 14,4 18,20 22,12 30,12 34,6 38,18 42,12 50,12 54,8 58,16 62,12 80,12"
+        stroke="var(--pri)" stroke-width="1.2" fill="none" opacity="0.6"/>
+    </svg>
+
+    <span class="sep"></span>
+
+    <!-- Center — "AI COMMUNICATIONS TERMINAL" with leaf glyphs -->
+    <div id="topbar-center">
+      <span class="leaf">✦</span>
+      <span style="letter-spacing:0.22em;">AI COMMUNICATIONS TERMINAL</span>
+      <span class="leaf">✦</span>
+    </div>
+
+    <span class="sep"></span>
+
+    <!-- Right cluster -->
+    <div id="topbar-right">
+      <span id="topbar-era">T.A. 3021</span>
+      <span style="opacity:0.25">·</span>
+      <span id="topbar-loc">LÓRIEN, TOWER OF AMON SÛL</span>
+      <span style="opacity:0.25">|</span>
+      <span id="topbar-time">--:--:--</span>
+    </div>
+  </div>
+
+  <!-- ═══════ MAIN ROW ═══════ -->
+  <div id="main">
+
+    <!-- ── LEFT PANEL: GALADRIEL CARD ── -->
+    <div id="left-panel">
+
+      <!-- Decorative glyph column (left edge, like reference) -->
+      <div class="left-glyph">✦<br>᛭<br>✦<br>᛭<br>✦</div>
+
+      <!-- THE MIRROR — pulsing portrait -->
+      <div id="mirror-wrap">
+        <img id="mirror-img" src="resources/mirror.png" alt="Galadriel and the Mirror of Lothlórien">
+        <div id="mirror-ring-outer"></div>
+        <div id="mirror-ring-gold"></div>
+        <div id="mirror-ring-inner"></div>
+        <div id="mirror-pulse"></div>
+        <div id="mirror-pulse2"></div>
+        <div id="typing-dots"><span></span><span></span><span></span></div>
+      </div>
+
+      <!-- Identity -->
+      <div id="ident">
+        <div class="name">GALADRIEL</div>
+        <div class="title-line">LADY OF LIGHT</div>
+      </div>
+    </div>
+
+    <!-- ── RIGHT PANEL: CHAT ── -->
+    <div id="chat-panel">
+      <div id="chat-header">
+        <span class="lock">🔒</span>
+        <span>SECURE CHANNEL:</span>
+        <span class="ch-sep"> ─── </span>
+        <span class="ch-name">ISILDUR</span>
+        <span class="ch-sep"> ─── </span>
+        <button id="new-btn">NEW SESSION</button>
+      </div>
+
+      <div id="messages">
+        <div id="empty-state">
+          <div class="rune">✦</div>
+          <span>The mirror is still</span>
+          <span>Speak to awaken the light</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── RIGHT RAIL: SPECIAL COMMANDS ── -->
+    <div id="right-rail">
+      <div id="right-rail-title">Commands</div>
+      <button class="special-cmd-btn" id="cmd-media-btn" title="List every generated image and sound">
+        <span class="cmd-icon">🖼</span>
+        <span>Media</span>
+      </button>
+      <button class="special-cmd-btn" id="cmd-status-btn"><span class="cmd-icon">◈</span><span>Status</span></button>
+      <button class="special-cmd-btn" id="cmd-logs-btn"><span class="cmd-icon">≋</span><span>Logs</span></button>
+    </div>
+
+  </div><!-- /#main -->
+
+  <!-- ═══════ FOOTER ═══════ -->
+  <div id="footer">
+
+    <!-- Left: session stats (moved down from the left panel to reclaim
+         the space the idle waveform display used to occupy) + a slim
+         ambient waveform accent that still pulses while Galadriel thinks -->
+    <div id="footer-left">
+      <div id="stats">
+        <div class="stat-row">
+          <span>MESSAGES</span>
+          <span class="val" id="stat-msgs">0</span>
+        </div>
+        <div class="stat-row">
+          <span>SESSION</span>
+          <span class="val" id="stat-session">--:--</span>
+        </div>
+        <div class="stat-row">
+          <span>LAST REPLY</span>
+          <span class="val" id="stat-last">—</span>
+        </div>
+        <div class="stat-row stat-build">
+          <span>BUILD</span>
+          <span class="val" id="stat-ver">—</span>
+        </div>
+      </div>
+      <div id="waveform">
+        <span></span><span></span><span></span><span></span><span></span>
+        <span></span><span></span><span></span><span></span><span></span>
+      </div>
+    </div>
+
+    <!-- Right: input + send -->
+    <div id="footer-right">
+      <div id="img-preview-strip"></div>
+      <label id="img-attach-btn" title="Attach image">🖼<input type="file" id="img-file-input" accept="image/*" multiple style="display:none"></label>
+      <label id="doc-attach-btn" title="Attach file (PDF/text)">📎<input type="file" id="doc-file-input" accept=".pdf,.txt,.md,.json,application/pdf,text/plain,text/markdown,application/json" multiple style="display:none"></label>
+      <div id="input-wrap">
+        <textarea id="msg-input"
+          placeholder="Speak to the Lady…"
+          rows="1"
+          autocomplete="off"
+          spellcheck="false"></textarea>
+      </div>
+
+      <div id="send-label">SEND <small>↵ ENTER</small></div>
+
+      <!-- Crystal gem send button — matching the reference's bottom-right gem -->
+      <button id="send-btn" title="Send (Enter)">
+        <svg width="48" height="48" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <!-- Outer crystal facets -->
+          <polygon points="16,3 27,13 16,29 5,13"
+            fill="rgba(184,204,224,0.10)"
+            stroke="var(--pri)"
+            stroke-width="1.0"
+            stroke-linejoin="round"/>
+          <!-- Upper bright face -->
+          <polygon points="16,3 27,13 16,17 5,13"
+            fill="rgba(184,204,224,0.22)"
+            stroke="rgba(184,204,224,0.55)"
+            stroke-width="0.7"/>
+          <!-- Inner highlight -->
+          <polygon points="16,3 22,11 16,14 10,11"
+            fill="rgba(200,240,230,0.18)"
+            stroke="rgba(200,240,230,0.35)"
+            stroke-width="0.4"/>
+          <!-- Equator line -->
+          <line x1="5" y1="13" x2="27" y2="13" stroke="rgba(184,204,224,0.35)" stroke-width="0.6"/>
+          <!-- Vertical axis line -->
+          <line x1="16" y1="3" x2="16" y2="17" stroke="rgba(255,255,255,0.15)" stroke-width="0.4"/>
+          <!-- Teal glow dot at tip -->
+          <circle cx="16" cy="3" r="1.5" fill="var(--pri)" opacity="0.7"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- ═══════ MEDIA OVERLAY (Special Command: Media) ═══════ -->
+  <div id="media-overlay">
+    <div id="media-overlay-header">
+      <span class="title">Media Archive</span>
+      <span class="count" id="media-count"></span>
+      <button id="media-close-btn">Close</button>
+    </div>
+    <div id="media-list"></div>
+  </div>
+
+  <div id="inspect-overlay">
+    <div id="inspect-header">
+      <strong id="inspect-title"></strong><span id="inspect-state"></span>
+      <button id="inspect-pause" class="sheet-btn">Pause</button>
+      <button id="inspect-close" class="sheet-btn">Close</button>
+    </div>
+    <div id="inspect-content"></div>
+    <small id="inspect-footer">Read-only · no prompts · no model calls. Logs may contain private operational information.</small>
+  </div>
+
+  <!-- ═══════ LINK SHEET (themed replacement for window.prompt) ═══════ -->
+  <div id="link-sheet">
+    <div class="sheet">
+      <div class="sheet-title" id="link-sheet-title">Link</div>
+      <div class="sheet-body" id="link-sheet-body"></div>
+      <div class="sheet-actions">
+        <button class="sheet-btn" id="link-sheet-close">Close</button>
+        <button class="sheet-btn primary" id="link-sheet-copy">⌘ Copy</button>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /#root -->
+
+<script>
+/* ═══════════════════════════════════════════════════════════════════════
+   GALADRIEL EDGE WIDGET v1.3.2
+   ═══════════════════════════════════════════════════════════════════════ */
+
+function getSetting(name, fallback) {
+  const v = typeof window[name] !== 'undefined' ? window[name] : null;
+  return (v !== null && v !== '') ? v : fallback;
+}
+
+let CFG = {
+  url:   getSetting('towerUrl',  'http://localhost:8080'),
+  token: getSetting('edgeToken', ''),
+  poll:  Math.max(2, Math.min(30, parseInt(getSetting('pollSecs', '3'), 10))),
+};
+
+window.icueEvents = {
+  onICUEInitialized: reloadConfig,
+  onDataUpdated:     reloadConfig,
+};
+
+function reloadConfig() {
+  const newUrl   = getSetting('towerUrl',  'http://localhost:8080');
+  const newToken = getSetting('edgeToken', '');
+  const newPoll  = Math.max(2, Math.min(30, parseInt(getSetting('pollSecs', '3'), 10)));
+  const changed  = newUrl !== CFG.url || newToken !== CFG.token || newPoll !== CFG.poll;
+  CFG = { url: newUrl, token: newToken, poll: newPoll };
+  if (changed) restartPolling();   // only restart if something actually changed
+}
+
+/* ── DOM refs ── */
+const $dot       = document.getElementById('status-dot');
+const $stTxt     = document.getElementById('status-text');
+const $time      = document.getElementById('topbar-time');
+const $msgs      = document.getElementById('messages');
+
+  /* ── SCROLL FIX: iCUE intercepts native wheel; drive it manually ── */
+  $msgs.setAttribute('tabindex', '0');
+  $msgs.addEventListener('wheel', function(e) {
+    e.preventDefault();
+    $msgs.scrollTop += e.deltaY * 0.8;
+  }, { passive: false });
+  /* I-006: Ctrl+C on a marked selection. Native copy is unreliable in the
+     iCUE webview, so route it through the textarea+execCommand path the
+     bubble copy button already proves works here. */
+  document.addEventListener('keydown', function(e) {
+    if (!(e.ctrlKey || e.metaKey) || e.key.toLowerCase() !== 'c') return;
+    if (document.activeElement === $input) return;          // input has its own copy
+    const sel = window.getSelection ? window.getSelection() : null;
+    const text = sel ? sel.toString() : '';
+    if (!text || !$msgs.contains(sel.anchorNode)) return;
+    e.preventDefault();
+    const ta = document.createElement('textarea');
+    ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.focus(); ta.select();
+    let ok = false;
+    try { ok = document.execCommand('copy'); } catch(err) {}
+    document.body.removeChild(ta);
+    if (!ok && navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).catch(() => {});
+    }
+    setStatus('online', 'COPIED ' + text.length + ' CHARS');
+    setTimeout(() => { if ($stTxt.textContent.startsWith('COPIED')) setStatus('online', 'TOWER ONLINE'); }, 1500);
+  });
+  $msgs.addEventListener('keydown', function(e) {
+    if (e.key === 'ArrowDown') { e.preventDefault(); $msgs.scrollTop += 60; }
+    if (e.key === 'ArrowUp')   { e.preventDefault(); $msgs.scrollTop -= 60; }
+    if (e.key === 'PageDown')  { e.preventDefault(); $msgs.scrollTop += 300; }
+    if (e.key === 'PageUp')    { e.preventDefault(); $msgs.scrollTop -= 300; }
+    if (e.key === 'End')       { e.preventDefault(); $msgs.scrollTop = $msgs.scrollHeight; }
+    if (e.key === 'Home')      { e.preventDefault(); $msgs.scrollTop = 0; }
+  });
+const $input     = document.getElementById('msg-input');
+const $sendBtn   = document.getElementById('send-btn');
+const $newBtn    = document.getElementById('new-btn');
+const $typing    = document.getElementById('typing-dots');
+const $mirror    = document.getElementById('mirror-wrap');
+const $pulse     = document.getElementById('mirror-pulse');
+const $pulse2    = document.getElementById('mirror-pulse2');
+const $wave      = document.getElementById('waveform');
+const $statMsgs  = document.getElementById('stat-msgs');
+const $statSess  = document.getElementById('stat-session');
+const $statLast  = document.getElementById('stat-last');
+
+/* ── State ── */
+let msgCount     = 0;
+let sessionStart = Date.now();
+let lastReplyTime = null;
+let pollTimer    = null;
+let sending      = false;
+let sendingStart = 0;
+let pendingUsrDiv = null;   // the optimistic bubble for the in-flight send
+let pendingText    = '';    // its text, for one-click retry
+let lastCost       = null;  // 'cost' SSE event for the in-flight turn (THE TRUE LEDGER, 2026-09-05)
+let lastActivityAt = 0;     // last SSE event time (token/progress/done/error) — the
+                            // watchdog below resets on THIS, not on send time, so a
+                            // legitimately slow turn (image generation, a cold cache
+                            // write) never gets falsely flagged mid-flight.
+
+/* THE TRUE LEDGER (2026-09-05): the Tower prices every API hop of the turn
+   from its own cost ledger and sends one 'cost' event before 'done'. Show it
+   where the timestamp lives — small, honest, an estimate, never a bill. */
+function appendCost(timeDiv) {
+  const c = lastCost; lastCost = null;
+  if (!timeDiv || !c || timeDiv.querySelector('.msg-cost')) return;
+  const usd = v => v < 0.01 ? '$' + v.toFixed(4) : '$' + v.toFixed(3);
+  const hit = Math.round((c.cache_hit || 0) * 100);
+  const span = document.createElement('span');
+  span.className = 'msg-cost';
+  span.textContent = ` · ${usd(c.turn)} · cache ${hit}% · today ${usd(c.day)}`;
+  span.title = `${c.model} — ${c.calls} call${c.calls === 1 ? '' : 's'}\n` +
+               `input ${c.input} · cache read ${c.cache_read} · cache write ${c.cache_write} · output ${c.output}\n` +
+               `estimate from the Tower's own ledger at published per-token rates — not the vendor's bill`;
+  timeDiv.appendChild(span);
+}
+
+/* Mark a stuck/failed optimistic user bubble as undelivered, with a
+   retry control — instead of silently vanishing into an unanswered,
+   unexplained gap (the 2026-08-27 bug: a restart-in-flight ate a
+   message with zero trace, client or server). */
+function markSendFailed(div, text, reason) {
+  if (!div || div.dataset.resolved) return;
+  div.dataset.resolved = '1';
+  div.classList.remove('pending');
+  div.classList.add('failed');
+  const timeDiv = div.querySelector('.msg-time');
+  if (timeDiv && !timeDiv.querySelector('.msg-retry')) {
+    const btn = document.createElement('button');
+    btn.className = 'msg-retry';
+    btn.textContent = '⚠ not delivered — retry';
+    btn.title = reason || 'send failed';
+    btn.onclick = () => {
+      div.remove();
+      $input.value = text;
+      sendMessage();
+    };
+    timeDiv.appendChild(btn);
+  }
+}
+
+// Before declaring a turn failed, check the server's own thread history --
+// a dropped/closed SSE stream is NOT proof the turn failed. The backend may
+// have completed the whole tool-cascade and even trimmed history already
+// (2026-08-29: a genuine ~40s two-tool-call answer was flagged "not
+// delivered" while the reply sat, complete, in server-side history -- the
+// client-side connection died, the turn itself did not). /api/edge/history
+// is the source of truth; trust it over a broken pipe.
+async function reconcileOrFail(div, text, reason) {
+  try {
+    const data = await apiFetch('/api/edge/history');
+    const msgs = data.messages || [];
+    for (let i = msgs.length - 1; i >= 0; i--) {
+      if (msgs[i].role === 'usr' && msgs[i].text.trim() === text.trim()) {
+        const reply = msgs[i + 1];
+        if (reply && reply.role === 'gal') {
+          // It landed server-side. Un-fail the bubble, and paint the
+          // reply if this dead stream never got to render one at all.
+          resolveDiv(div);
+          const already = Array.from($msgs.querySelectorAll('.msg.gal .bubble'))
+            .some(b => b.innerText.trim() === reply.text.trim() || b.innerText.trim().endsWith('\n' + reply.text.trim()));
+          if (!already) renderMsg('gal', reply.display_text || reply.text);
+          setThinking(false);
+          setStatus('online', 'TOWER ONLINE');
+          return;
+        }
+        break; // found our message but no reply after it -- genuinely not delivered
+      }
+    }
+  } catch (e) {
+    // History check itself unreachable -- fall through to the honest failure UI.
+  }
+  markSendFailed(div, text, reason);
+}
+
+// Retroactively un-fail a bubble whose reply arrived LATE — after the
+// watchdog already (falsely) marked it. Safe to call on any div, resolved
+// or not; a no-op if there's nothing to clear.
+function resolveDiv(div) {
+  if (!div) return;
+  div.classList.remove('pending', 'failed');
+  div.dataset.resolved = '1';
+  const btn = div.querySelector('.msg-retry');
+  if (btn) btn.remove();
+}
+
+// Watchdog: idle-since-last-SSE-event, NOT an absolute deadline from send.
+// (2026-08-29: a flat 30s-from-send timer falsely flagged a real, healthy,
+// in-flight image-generation turn as "not delivered" — generate_image alone
+// routinely runs 15-25s, on top of tool-call/model latency and, on a cold
+// cache, a large cache-write; the server already emits a 'progress' event
+// per tool call for exactly this reason, but the client ignored it. Now it
+// doesn't: any token/progress/done/error event resets the clock.)
+const WATCHDOG_IDLE_MS = 75000;
+setInterval(() => {
+  const ref = lastActivityAt || sendingStart;
+  if (sending && ref && (Date.now() - ref > WATCHDOG_IDLE_MS)) {
+    console.warn('[Edge] sending watchdog fired — resetting stuck state');
+    reconcileOrFail(pendingUsrDiv, pendingText, `no activity within ${WATCHDOG_IDLE_MS/1000}s`);
+    sending = false; sendingStart = 0; lastActivityAt = 0;
+    pendingUsrDiv = null; pendingText = '';
+    $input.disabled = false; $sendBtn.disabled = false;
+    setThinking(false);
+    setStatus('online', 'TOWER ONLINE');
+    flushDeferredPoll();
+  }
+}, 5000);
+let loaded       = false;
+
+/* ── Clock ── */
+let lastTimeStr = '';
+let lastSessStr = '';
+function tickClock() {
+  const now = new Date();
+  const timeStr = now.toTimeString().slice(0,8);
+  if (timeStr !== lastTimeStr) {
+    $time.textContent = timeStr;
+    lastTimeStr = timeStr;
+  }
+  const elapsed = Math.floor((Date.now() - sessionStart) / 1000);
+  const mm = String(Math.floor(elapsed / 60)).padStart(2, '0');
+  const ss = String(elapsed % 60).padStart(2, '0');
+  const sessStr = `${mm}:${ss}`;
+  if (sessStr !== lastSessStr) {
+    $statSess.textContent = sessStr;
+    lastSessStr = sessStr;
+  }
+}
+setInterval(tickClock, 1000);
+tickClock();
+
+/* ── Status helpers ── */
+function setStatus(state, text) {
+  // STILL WATER: poll() calls this every tick; skip the style/text write
+  // when nothing changed so an idle widget triggers no invalidation at all.
+  if ($dot.className === state && $stTxt.textContent === text) return;
+  $dot.className = state;
+  $stTxt.textContent = text;
+}
+
+/* ── Thinking state: mirror glows ── */
+function setThinking(on) {
+  if (on) {
+    $mirror.classList.add('thinking');
+    $pulse.classList.add('active');
+    $pulse2.classList.add('active');
+    $typing.classList.add('visible');
+    $wave.classList.add('active');
+  } else {
+    $mirror.classList.remove('thinking');
+    $pulse.classList.remove('active');
+    $pulse2.classList.remove('active');
+    $typing.classList.remove('visible');
+    $wave.classList.remove('active');
+  }
+}
+
+/* ── API helpers ── */
+function headers() {
+  return {
+    'Content-Type': 'application/json',
+    'X-Edge-Token': CFG.token,
+  };
+}
+
+async function apiFetch(path, options = {}) {
+  const url = CFG.url.replace(/\/$/, '') + path;
+  const res = await fetch(url, { ...options, headers: headers() });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.error || `HTTP ${res.status}`);
+  }
+  return res.status === 204 ? null : res.json();
+}
+
+/* ── Render a message bubble ── */
+function renderMsg(role, text, time) {
+  const el = document.getElementById('empty-state');
+  if (el) el.remove();
+
+  const isGal = (role === 'gal' || role === 'assistant');
+  const div = document.createElement('div');
+  div.className = 'msg ' + (isGal ? 'gal' : 'usr');
+
+  const timeStr = time || new Date().toTimeString().slice(0,8);
+
+  div.innerHTML = `
+    <div class="msg-avatar">${isGal ? '✦' : '◈'}</div>
+    <div>
+      <div class="bubble">${isGal ? renderMarkdown(text, CFG.url) : escapeHtml(text)}</div>
+      <div class="msg-time">${timeStr}${isGal ? ' <button class="btn-copy" title="Copy" onclick="copyMsg(this)">\u2398 copy</button>' : ''}</div>
+    </div>`;
+
+  $msgs.appendChild(div);
+  $msgs.scrollTop = $msgs.scrollHeight;
+
+  msgCount++;
+  $statMsgs.textContent = msgCount;
+  // Only a real Galadriel reply counts as "last reply" — echoing the
+  // user's own message here was corrupting that stat (2026-08-27 fix).
+  if (isGal) {
+    lastReplyTime = new Date();
+    $statLast.textContent = lastReplyTime.toTimeString().slice(0,5);
+  }
+  return div;
+}
+
+function renderError(text) {
+  const el = document.getElementById('empty-state');
+  if (el) el.remove();
+
+  const div = document.createElement('div');
+  div.className = 'msg err';
+  div.innerHTML = `
+    <div class="msg-avatar">⚠</div>
+    <div>
+      <div class="bubble">${escapeHtml(text)}</div>
+      <div class="msg-time">${new Date().toTimeString().slice(0,8)}</div>
+    </div>`;
+  $msgs.appendChild(div);
+  $msgs.scrollTop = $msgs.scrollHeight;
+}
+
+function escapeHtml(s) {
+  return s
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/\n/g,'<br>');
+}
+
+/* ── Think-block extractor ── */
+function extractThinkBlocks(raw) {
+  const blocks = [];
+  const cleaned = raw.replace(/<think>([\s\S]*?)<\/think>/gi, (_, b) => {
+    blocks.push(b.trim()); return '';
+  });
+  return { cleaned: cleaned.trim(), blocks };
+}
+
+/* ── Markdown renderer ── */
+function renderMarkdown(raw, baseUrl) {
+  raw = String(raw || '');
+  if (raw.startsWith('🧭 **') && raw.includes('\n\n')) {
+    const cut = raw.indexOf('\n\n');
+    const statusLine = raw.slice(0, cut);
+    const isPending = statusLine.includes('(configured)');
+    const line = escapeHtml(statusLine).replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+    const cls = isPending ? 'response-status pending' : 'response-status';
+    return '<div class="' + cls + '" aria-label="Response status">' + line + '</div>' + renderMarkdown(raw.slice(cut + 2), baseUrl);
+  }
+
+  const { cleaned, blocks } = extractThinkBlocks(raw);
+  let s = cleaned;
+  // Media tags are placeholdered immediately, same as code blocks below —
+  // otherwise later markdown passes (bold/italic especially: `_(.+?)_`)
+  // tear into the URL itself. Generated-image filenames are timestamp+prompt
+  // joined with underscores (e.g. ..._a_palantír.png), so the italic regex
+  // ALWAYS finds a pair and splices <em></em> into the src, corrupting it
+  // into a 404. Field wound 2026-08-29: confirmed via server access log —
+  // the browser requested a filename with literal <em>/</em> inside it.
+  const media=[];
+  s = s.replace(/\[IMG\]:(\S+)/g, (_,u) => {
+    media.push(`<img class="md-img" src="${escapeHtml(u.trim())}" alt="image" loading="lazy">`);
+    return `\x00MD${media.length-1}\x00`;
+  });
+  s = s.replace(/\[AUDIO\]:(\S+)/g, (_,u) => {
+    media.push(`<audio class="md-audio" controls src="${escapeHtml(u.trim())}"></audio>`);
+    return `\x00MD${media.length-1}\x00`;
+  });
+  const cb=[], ic=[];
+  s = s.replace(/```(\w*)\n?([\s\S]*?)```/g, (_,l,c) => {
+    cb.push(`<div class="code-wrap"><button class="code-copy-btn" onclick="copySnippet(this)" title="Copy code">⎘ copy</button><pre><code>${escapeHtml(c.replace(/^\n|\n$/g,''))}</code></pre></div>`);
+    return `\x00CB${cb.length-1}\x00`;
+  });
+  s = s.replace(/`([^`]+)`/g, (_,c) => {
+    ic.push(`<code class="inline-code" onclick="copyInline(this)" title="Click to copy">${escapeHtml(c)}</code>`); return `\x00IC${ic.length-1}\x00`;
+  });
+  s = s.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (_,a,u) => {
+    media.push(`<img class="md-img" src="${escapeHtml(u)}" alt="${escapeHtml(a)}" loading="lazy">`);
+    return `\x00MD${media.length-1}\x00`;
+  });
+  s = s.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_,t,h) =>
+    `<a data-href="${escapeHtml(h)}" onclick="openLinkSheet(this.dataset.href);return false">${escapeHtml(t)}</a>`);
+  s = s.replace(/^###### (.+)$/gm,'<h6>$1</h6>');
+  s = s.replace(/^##### (.+)$/gm,'<h5>$1</h5>');
+  s = s.replace(/^#### (.+)$/gm,'<h4>$1</h4>');
+  s = s.replace(/^### (.+)$/gm,'<h3>$1</h3>');
+  s = s.replace(/^## (.+)$/gm,'<h2>$1</h2>');
+  s = s.replace(/^# (.+)$/gm,'<h1>$1</h1>');
+  s = s.replace(/^(-{3,}|\*{3,}|_{3,})$/gm,'<hr>');
+  s = s.replace(/((?:^>+[ \t]?.*\n?)+)/gm, blk => {
+    const lines = blk.replace(/\n$/,'').split('\n');
+    let html = '', depth = 0;
+    lines.forEach(line => {
+      const m = line.match(/^((?:>[ \t]?)+)(.*)$/);
+      if (!m) return;
+      const d = (m[1].match(/>/g)||[]).length, content = m[2];
+      while (depth < d) { html += '<blockquote>'; depth++; }
+      while (depth > d) { html += '</blockquote>'; depth--; }
+      html += content + '\n';
+    });
+    while (depth > 0) { html += '</blockquote>'; depth--; }
+    return html;
+  });
+  // Pipe tables: header row, |---|---| separator, 0+ data rows.
+  // A header row of entirely-empty cells (common in compact "infobox" style
+  // key/value tables) is rendered without a <thead> to avoid dead space on
+  // the narrow Edge panel -- rows just stack, first-column bold does the rest.
+  s = s.replace(/((?:^\|.*\|[ \t]*$\n?){2,})/gm, blk => {
+    const lines = blk.replace(/\n$/,'').split('\n');
+    if (lines.length < 2) return blk;
+    const sepOk = /^\|?[ \t]*:?-{1,}:?[ \t]*(\|[ \t]*:?-{1,}:?[ \t]*)*\|?[ \t]*$/.test(lines[1]);
+    if (!sepOk) return blk;
+    const splitRow = row => row.trim().replace(/^\|/,'').replace(/\|$/,'').split('|').map(c=>c.trim());
+    const header = splitRow(lines[0]);
+    const rows = lines.slice(2).map(splitRow);
+    const headerEmpty = header.every(h => h === '');
+    let html = '<div class="table-wrap"><table>';
+    if (!headerEmpty) html += '<thead><tr>' + header.map(h=>`<th>${h}</th>`).join('') + '</tr></thead>';
+    html += '<tbody>' + rows.map(r=>`<tr>${r.map(c=>`<td>${c}</td>`).join('')}</tr>`).join('') + '</tbody></table></div>';
+    return html;
+  });
+  s = s.replace(/\*\*\*(.+?)\*\*\*/g,'<strong><em>$1</em></strong>');
+  s = s.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
+  s = s.replace(/__(.+?)__/g,'<strong>$1</strong>');
+  s = s.replace(/\*(.+?)\*/g,'<em>$1</em>');
+  s = s.replace(/_(.+?)_/g,'<em>$1</em>');
+  // Collapse blank-line gaps directly between two list items of the same
+  // kind (LLM output often writes "item\n\nitem" paragraph-style) so the
+  // block regexes below group them into ONE list instead of a fresh
+  // single-item list per entry (which rendered as "1." repeating).
+  s = s.replace(/^([ \t]*[-*][ \t].*)\n(?:[ \t]*\n)+(?=[ \t]*[-*][ \t])/gm, '$1\n');
+  s = s.replace(/^([ \t]*\d+\.[ \t].*)\n(?:[ \t]*\n)+(?=[ \t]*\d+\.[ \t])/gm, '$1\n');
+  s = s.replace(/((?:^[ \t]*[-*][ \t].+\n?)+)/gm, blk => {
+    const its = blk.trim().split('\n').map(l=>`<li>${l.replace(/^[ \t]*[-*][ \t]/,'').trim()}</li>`).join('');
+    return `<ul>${its}</ul>`;
+  });
+  s = s.replace(/((?:^[ \t]*\d+\.[ \t].+\n?)+)/gm, blk => {
+    const lines = blk.trim().split('\n');
+    const firstNum = lines[0].match(/^[ \t]*(\d+)\./);
+    const start = firstNum ? firstNum[1] : '1';
+    const its = lines.map(l=>`<li>${l.replace(/^[ \t]*\d+\.[ \t]/,'').trim()}</li>`).join('');
+    return `<ol start="${start}">${its}</ol>`;
+  });
+  s = s.split(/\n{2,}/).map(p => {
+    p = p.trim(); if (!p) return '';
+    if (/^<(h[1-6]|ul|ol|pre|hr|blockquote|img|div)/.test(p)) return p;
+    return `<p>${p.replace(/\n/g,'<br>')}</p>`;
+  }).join('\n');
+  s = s.replace(/\x00CB(\d+)\x00/g,(_,i)=>cb[+i]);
+  s = s.replace(/\x00IC(\d+)\x00/g,(_,i)=>ic[+i]);
+  s = s.replace(/\x00MD(\d+)\x00/g,(_,i)=>media[+i]);
+  if (blocks.length) {
+    const th = blocks.map(b =>
+      `<details class="think-block"><summary class="think-summary">◈ Reasoning</summary><div class="think-body">${escapeHtml(b)}</div></details>`
+    ).join('\n');
+    s = th + '\n' + s;
+  }
+  return s;
+}
+
+/* ── Load history ── */
+async function loadHistory() {
+  try {
+    const data = await apiFetch('/api/edge/history');
+    if (data && data.messages && data.messages.length > 0) {
+      const el = document.getElementById('empty-state');
+      if (el) el.remove();
+      data.messages.forEach(m => renderMsg(m.role, m.display_text || m.text, m.time || ''));
+    }
+    setStatus('online', 'TOWER ONLINE');
+    loaded = true;
+  } catch (e) {
+    setStatus('offline', 'TOWER OFFLINE');
+    loaded = true;
+  }
+  // Show build version in sidebar
+  const $ver = document.getElementById('stat-ver');
+  if ($ver) $ver.textContent = WIDGET_VERSION;
+}
+
+/* ── Send message (SSE streaming) ── */
+async function sendMessage() {
+  const text = $input.value.trim();
+  const hasAttachments = stagedImages.length > 0 || stagedFiles.length > 0;
+  if ((!text && !hasAttachments) || sending) return;
+  if (!CFG.token) {
+    renderError('Edge Token not configured — open iCUE widget settings.');
+    return;
+  }
+
+  sending = true; sendingStart = Date.now(); lastActivityAt = Date.now();
+  $input.disabled = true;
+  $sendBtn.disabled = true;
+  $input.value = '';
+
+  const sendImages = stagedImages.slice();
+  const sendFiles  = stagedFiles.slice();
+  stagedImages = []; stagedFiles = [];
+  $imgStrip.innerHTML = ''; $imgStrip.classList.remove('visible');
+
+  let displayText = text;
+  if (hasAttachments) {
+    const parts = [];
+    if (sendImages.length) parts.push(`🖼 ${sendImages.length} image${sendImages.length>1?'s':''}`);
+    if (sendFiles.length)  parts.push(sendFiles.map(f=>`📄 ${f.name}`).join(', '));
+    displayText = (text ? text + '\n\n' : '') + parts.join(' · ');
+  }
+  pendingUsrDiv = renderMsg('usr', displayText);
+  pendingUsrDiv.classList.add('pending');
+  pendingText = text;
+  // Local, closure-owned reference — the shared pendingUsrDiv can be
+  // reassigned by a LATER sendMessage() call (e.g. after the watchdog
+  // force-resets to let the user retry), so this turn must resolve its
+  // OWN bubble, never whatever pendingUsrDiv happens to point to by then.
+  const myUsrDiv = pendingUsrDiv;
+  setStatus('sending', 'SENDING…');
+  setThinking(true);
+
+  const url = CFG.url.replace(/\/$/, '') + '/api/edge/stream';
+  let bubbleDiv  = null;
+  let bubbleText = '';
+
+  function ensureBubble() {
+    if (bubbleDiv) return;
+    const es = document.getElementById('empty-state');
+    if (es) es.remove();
+    const wrap = document.createElement('div');
+    wrap.className = 'msg gal';
+    wrap.innerHTML = `<div class="msg-avatar">✦</div>
+      <div>
+        <div class="bubble streaming-bubble"></div>
+        <div class="msg-time">${new Date().toTimeString().slice(0,8)}</div>
+      </div>`;
+    $msgs.appendChild(wrap);
+    $msgs.scrollTop = $msgs.scrollHeight;
+    bubbleDiv = wrap.querySelector('.bubble');
+  }
+
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Edge-Token': CFG.token,
+      },
+      body: JSON.stringify({ message: text, images: sendImages, files: sendFiles }),
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'HTTP ' + res.status);
+    }
+
+    const reader  = res.body.getReader();
+    const decoder = new TextDecoder();
+    let   buf     = '';
+    let   receivedDone = false;
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done || receivedDone) break;
+      buf += decoder.decode(value, { stream: true });
+      // Any bytes on the wire mean the Tower is alive — SSE comments
+      // (": keep") included. The watchdog must never fire while the
+      // server is demonstrably still talking to us (2026-09-05).
+      lastActivityAt = Date.now();
+
+      const lines = buf.split('\n');
+      buf = lines.pop();
+
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        let evt;
+        try { evt = JSON.parse(line.slice(6)); } catch { continue; }
+        lastActivityAt = Date.now();
+
+        if (evt.t === 'status') {
+          ensureBubble();
+          bubbleDiv.innerHTML = renderMarkdown((evt.display || '') + '\n\n', CFG.url);
+        } else if (evt.t === 'progress') {
+          // A tool is running (e.g. generate_image, run_shell) — this is
+          // exactly the silent stretch that used to trip the old watchdog.
+          // Since 2026-09-05 the server FORWARDS these (it used to swallow
+          // them), labelled either with the tool name, "working", or
+          // "queued behind another in-flight turn" — say which.
+          const v = String(evt.v || '');
+          if (v.startsWith('queued')) {
+            setStatus('sending', 'QUEUED — another turn is running');
+            if (myUsrDiv) myUsrDiv.title = 'Accepted by the Tower; waiting for the current turn to finish. Do not retry.';
+          } else if (v && v !== 'working') {
+            setStatus('sending', 'WORKING… ' + v.replace(/_/g, ' '));
+          } else {
+            setStatus('sending', 'WORKING…');
+          }
+
+        } else if (evt.t === 'cost') {
+          lastCost = evt.v || null;
+
+        } else if (evt.t === 'token') {
+          ensureBubble();
+          bubbleText += evt.v;
+          // Buffered by design: no raw/unformatted paint mid-stream (was
+          // causing a visible "bumpy" flash that snapped to formatted
+          // markdown only at the end). The blinking cursor on
+          // .streaming-bubble is the sole live-progress signal; the fully
+          // formatted bubble is rendered once, below, on 'done'.
+
+        } else if (evt.t === 'done') {
+          if (!bubbleDiv) {
+            renderMsg('gal', evt.display_v || evt.v);
+            const galMsgs = $msgs.querySelectorAll('.msg.gal .msg-time');
+            appendCost(galMsgs[galMsgs.length - 1]);
+          } else {
+            bubbleText = evt.display_v || evt.v;
+            bubbleDiv.innerHTML = renderMarkdown(bubbleText, CFG.url);
+            bubbleDiv.classList.remove('streaming-bubble');
+            {
+              const timeDiv = bubbleDiv.closest('div').parentElement.querySelector('.msg-time');
+              appendCost(timeDiv);
+              if (timeDiv && !timeDiv.querySelector('.btn-copy')) {
+                const cbtn = document.createElement('button');
+                cbtn.className = 'btn-copy';
+                cbtn.title = 'Copy';
+                cbtn.textContent = '\u2398 copy';
+                cbtn.onclick = () => copyMsg(cbtn);
+                timeDiv.appendChild(document.createTextNode(' '));
+                timeDiv.appendChild(cbtn);
+              }
+            }
+            msgCount++;
+            $statMsgs.textContent = msgCount;
+            lastReplyTime = new Date();
+            $statLast.textContent = lastReplyTime.toTimeString().slice(0,5);
+            $msgs.scrollTop = $msgs.scrollHeight;
+          }
+          setThinking(false);
+          setStatus('online', 'TOWER ONLINE');
+          receivedDone = true;
+          resolveDiv(myUsrDiv);
+          if (pendingUsrDiv === myUsrDiv) pendingUsrDiv = null;
+          reader.cancel();
+          break;
+
+        } else if (evt.t === 'error') {
+          setThinking(false);
+          renderError(evt.v);
+          setStatus('offline', 'TOWER OFFLINE');
+          markSendFailed(myUsrDiv, pendingText, evt.v);
+          if (pendingUsrDiv === myUsrDiv) pendingUsrDiv = null;
+        }
+      }
+    }
+    // The read loop can end because the connection closed (done:true from
+    // the reader) without ever seeing a 'done' event — no exception is
+    // thrown, so this fell through the catch below silently in the old
+    // code. That is precisely how a restart-in-flight ate a message with
+    // zero trace on 2026-08-27: the bubble just sat there, unanswered and
+    // unexplained, forever. Treat a closed-without-done stream as a
+    // failure, not a success.
+    if (!receivedDone) {
+      setThinking(false);
+      renderError('Connection closed before a reply arrived.');
+      setStatus('offline', 'TOWER OFFLINE');
+      await reconcileOrFail(myUsrDiv, pendingText, 'stream closed without a reply');
+      if (pendingUsrDiv === myUsrDiv) pendingUsrDiv = null;
+    }
+  } catch (e) {
+    setThinking(false);
+    if (!receivedDone) {
+      renderError((/^HTTP \d|Failed to fetch|NetworkError/.test(e.message) ? 'Could not reach the Tower: ' : 'The Tower refused this message: ') + e.message);
+      setStatus('offline', 'TOWER OFFLINE');
+      await reconcileOrFail(myUsrDiv, pendingText, e.message);
+      if (pendingUsrDiv === myUsrDiv) pendingUsrDiv = null;
+    }
+  } finally {
+    sending = false; sendingStart = 0; lastActivityAt = 0;
+    $input.disabled = false;
+    $sendBtn.disabled = false;
+    $input.focus();
+    flushDeferredPoll();
+  }
+}
+
+/* ── Copy helpers ── */
+function copyTextToClipboard(text, onSuccess, onFail) {
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.position = 'fixed';
+  ta.style.opacity = '0';
+  document.body.appendChild(ta);
+  ta.focus(); ta.select(); ta.setSelectionRange(0, 99999);
+  let ok = false;
+  try { ok = document.execCommand('copy'); } catch(e) {}
+  document.body.removeChild(ta);
+  if (ok) {
+    if (onSuccess) onSuccess();
+    return;
+  }
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(() => {
+      if (onSuccess) onSuccess();
+    }).catch(() => {
+      if (onFail) onFail();
+    });
+  } else {
+    if (onFail) onFail();
+  }
+}
+
+function copySnippet(btn) {
+  const wrap = btn.closest('.code-wrap');
+  const code = wrap ? wrap.querySelector('code') : null;
+  const text = code ? code.innerText : '';
+  copyTextToClipboard(text, () => {
+    btn.textContent = '\u2713 copied'; btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = '\u2398 copy'; btn.classList.remove('copied'); }, 1500);
+  }, () => openLinkSheet(text, 'Copy snippet'));
+}
+
+function copyInline(el) {
+  const text = el.innerText;
+  copyTextToClipboard(text, () => {
+    el.classList.add('copied');
+    setTimeout(() => { el.classList.remove('copied'); }, 1200);
+  }, () => openLinkSheet(text, 'Copy text'));
+}
+
+function copyMsg(btn) {
+  const bubble = btn.closest('.msg').querySelector('.bubble');
+  const text = bubble ? bubble.innerText : '';
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.position = 'fixed';
+  ta.style.opacity = '0';
+  document.body.appendChild(ta);
+  ta.focus(); ta.select(); ta.setSelectionRange(0, 99999);
+  let ok = false;
+  try { ok = document.execCommand('copy'); } catch(e) {}
+  document.body.removeChild(ta);
+  if (ok) {
+    btn.textContent = '\u2713 copied'; btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = '\u2398 copy'; btn.classList.remove('copied'); }, 1500);
+    return;
+  }
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(() => {
+      btn.textContent = '\u2713 copied'; btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = '\u2398 copy'; btn.classList.remove('copied'); }, 1500);
+    }).catch(() => promptCopy(text, btn));
+  } else { promptCopy(text, btn); }
+}
+function promptCopy(text, btn) {
+  btn.textContent = '\u26a0 select in sheet';
+  setTimeout(() => { btn.textContent = '\u2398 copy'; btn.classList.remove('copied'); }, 4000);
+  openLinkSheet(text, 'Copy — select the text below');
+}
+
+/* ── Link sheet: themed, in-widget replacement for the native prompt ── */
+const $linkSheet = document.getElementById('link-sheet');
+const $linkSheetBody = document.getElementById('link-sheet-body');
+const $linkSheetTitle = document.getElementById('link-sheet-title');
+let linkSheetText = '';
+function openLinkSheet(text, title) {
+  linkSheetText = text || '';
+  $linkSheetTitle.textContent = title || 'Link';
+  $linkSheetBody.textContent = linkSheetText;
+  $linkSheet.classList.add('open');
+  document.body.classList.add('overlay-open');
+  try {
+    const r = document.createRange(); r.selectNodeContents($linkSheetBody);
+    const sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(r);
+  } catch(e) {}
+}
+function closeLinkSheet() {
+  $linkSheet.classList.remove('open');
+  document.body.classList.remove('overlay-open');
+}
+document.getElementById('link-sheet-close').addEventListener('click', closeLinkSheet);
+document.getElementById('link-sheet-copy').addEventListener('click', function() {
+  const btn = this;
+  const done = () => { btn.textContent = '\u2713 copied'; setTimeout(() => { btn.textContent = '\u2318 Copy'; closeLinkSheet(); }, 900); };
+  let ok = false;
+  try { ok = document.execCommand('copy'); } catch(e) {}
+  if (ok) return done();
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(linkSheetText).then(done).catch(() => { btn.textContent = 'Ctrl+C'; });
+  } else { btn.textContent = 'Ctrl+C'; }
+});
+$linkSheet.addEventListener('click', e => { if (e.target === $linkSheet) closeLinkSheet(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && $linkSheet.classList.contains('open')) closeLinkSheet(); });
+
+/* ── Polling (for push messages from the Tower) ── */
+let lastMsgId = null;
+let lastApprovalId = null;
+const deferredPollMessages = [];
+
+function flushDeferredPoll() {
+  while (deferredPollMessages.length > 0) {
+    const item = deferredPollMessages.shift();
+    renderMsg('gal', item.message, item.time || '');
+  }
+}
+
+let pollFailures = 0;   // consecutive — one blip must not paint the dot red (flicker)
+async function poll() {
+  try {
+    const data = await apiFetch('/api/edge/poll');
+    pollFailures = 0;
+    if (data && data.type === 'approval') {
+      if (data.id !== lastApprovalId) {
+        lastApprovalId = data.id;
+        renderApproval(data.id, data.command);
+      }
+    } else if (data && data.message) {
+      if (data.id !== lastMsgId) {
+        lastMsgId = data.id;
+        if (sending) {
+          deferredPollMessages.push({ message: data.message, time: data.time || '' });
+        } else {
+          renderMsg('gal', data.message, data.time || '');
+        }
+      }
+    }
+    if ($dot.className !== 'sending') {
+      setStatus('online', 'TOWER ONLINE');
+    }
+  } catch {
+    pollFailures++;
+    // Debounced (2026-09-05): a single failed 3s poll used to flip the dot
+    // red and the next success flipped it green — the "flicker". Two
+    // consecutive misses is a real outage signal; one is a blip.
+    if (pollFailures >= 2 && $dot.className !== 'sending') {
+      setStatus('offline', 'TOWER OFFLINE');
+    }
+  }
+}
+
+/* ── Approval card — a red-tier command awaiting Yes/No ── */
+function renderApproval(id, command) {
+  const el = document.getElementById('empty-state');
+  if (el) el.remove();
+
+  const div = document.createElement('div');
+  div.className = 'msg approval';
+  div.innerHTML = `
+    <div class="msg-avatar">⚠</div>
+    <div>
+      <div class="bubble">
+        <div class="approval-label">Approval required</div>
+        <div class="approval-cmd">${escapeHtml(command || '')}</div>
+        <div class="approval-actions">
+          <button class="approval-btn yes" onclick="resolveApproval('${id}','yes',this)">✓ Approve</button>
+          <button class="approval-btn no" onclick="resolveApproval('${id}','no',this)">✕ Deny</button>
+        </div>
+      </div>
+      <div class="msg-time">${new Date().toTimeString().slice(0,8)}</div>
+    </div>`;
+
+  // If an in-flight assistant response is currently streaming, the approval
+  // request was triggered by an action during that turn and must appear
+  // BEFORE the eventual reply. Otherwise, the reply renders above the approval card.
+  const activeStream = $msgs.querySelector('.msg.gal .streaming-bubble')?.closest('.msg.gal');
+  if (activeStream) {
+    $msgs.insertBefore(div, activeStream);
+  } else {
+    $msgs.appendChild(div);
+  }
+  $msgs.scrollTop = $msgs.scrollHeight;
+}
+
+async function resolveApproval(id, decision, btn) {
+  const actions = btn.closest('.approval-actions');
+  actions.innerHTML = '<span class="approval-resolved">resolving…</span>';
+  try {
+    await apiFetch(`/api/edge/approve/${id}/${decision}`, { method: 'POST' });
+    actions.innerHTML = decision === 'yes'
+      ? '<span class="approval-resolved">✓ approved</span>'
+      : '<span class="approval-resolved">✕ denied</span>';
+  } catch (e) {
+    actions.innerHTML = `<span class="approval-resolved err">failed: ${escapeHtml(e.message)}</span>`;
+  }
+}
+
+function restartPolling() {
+  clearInterval(pollTimer);
+  pollTimer = setInterval(poll, CFG.poll * 1000);
+}
+
+const WIDGET_VERSION = '1.3.32';
+
+/* ── Input event wiring ── */
+$input.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendMessage();
+  }
+});
+
+$sendBtn.addEventListener('click', sendMessage);
+
+$newBtn.addEventListener('click', async () => {
+  // Reset any stuck send state
+  sending = false; sendingStart = 0;
+  deferredPollMessages.length = 0;
+  $input.disabled = false; $sendBtn.disabled = false;
+  setThinking(false);
+  setStatus('online', 'TOWER ONLINE');
+  try {
+    await apiFetch('/api/edge/new', { method: 'POST' });
+    $msgs.innerHTML = `
+      <div id="empty-state">
+        <div class="rune">✦</div>
+        <span>The mirror is still</span>
+        <span>Speak to awaken the light</span>
+      </div>`;
+    msgCount = 0;
+    $statMsgs.textContent = '0';
+    lastMsgId = null;
+  } catch(e) {
+    renderError('Could not clear session: ' + e.message);
+  }
+});
+
+/* ── Auto-resize textarea (debounced layout reflow) ── */
+let lastInputHeight = 0;
+$input.addEventListener('input', () => {
+  // Only recalculate scrollHeight if text has newlines or reaches scroll boundary
+  // Avoids setting height='auto' on every keystroke which causes layout thrash/flicker
+  if ($input.scrollHeight > $input.clientHeight || $input.value.includes('\n')) {
+    const prev = $input.style.height;
+    $input.style.height = 'auto';
+    const target = Math.min(Math.max(55, $input.scrollHeight), 110);
+    if (Math.abs(target - lastInputHeight) > 3) {
+      $input.style.height = target + 'px';
+      lastInputHeight = target;
+    } else {
+      $input.style.height = prev;
+    }
+  } else if ($input.value === '') {
+    $input.style.height = '55px';
+    lastInputHeight = 55;
+  }
+});
+
+/* ═══════════════════════════════════════════════════════════════
+   SPECIAL COMMAND: MEDIA — list every generated image/sound with
+   its full original prompt (not the truncated filename slug).
+   ═══════════════════════════════════════════════════════════════ */
+const $mediaBtn     = document.getElementById('cmd-media-btn');
+const $mediaOverlay = document.getElementById('media-overlay');
+const $mediaList    = document.getElementById('media-list');
+const $mediaCount   = document.getElementById('media-count');
+const $mediaClose   = document.getElementById('media-close-btn');
+
+function formatBytes(n) {
+  if (!n && n !== 0) return '—';
+  if (n < 1024) return n + ' B';
+  if (n < 1024*1024) return (n/1024).toFixed(1) + ' KB';
+  return (n/(1024*1024)).toFixed(1) + ' MB';
+}
+
+function formatWhen(iso) {
+  try {
+    const d = new Date(iso);
+    return d.toLocaleString();
+  } catch(e) { return iso || '—'; }
+}
+
+function renderMediaItem(item) {
+  // Only ever called on items confirmed present on disk (see openMediaPanel's
+  // available/lost split below) — a missing file rendered as a real <img>/
+  // <audio> tag just shows the browser's broken-icon + overlapping alt text
+  // on every single panel open (2026-08-30 bug: 7 dead /tmp-era entries,
+  // wiped by the nightly reboot before fbab7c3's persistent-path fix landed,
+  // repainted as broken thumbnails forever). Defensive check kept anyway.
+  if (item.file_missing) return renderLostItem(item);
+  const isImg = item.type === 'image';
+  const tags = [
+    `<span class="media-tag type-${item.type}">${escapeHtml(item.type)}</span>`,
+    `<span class="media-tag">${formatWhen(item.created_at)}</span>`,
+    `<span class="media-tag">${formatBytes(item.size_bytes)}</span>`,
+  ];
+  if (item.model) tags.push(`<span class="media-tag">${escapeHtml(item.model)}</span>`);
+
+  const media = isImg
+    ? `<img class="media-thumb" src="${escapeHtml(item.url)}" alt="generated image" loading="lazy">`
+    : `<audio controls src="${escapeHtml(item.url)}"></audio>`;
+
+  return `
+    <div class="media-item">
+      ${media}
+      <div class="media-tags">${tags.join('')}</div>
+      <div class="media-prompt">${escapeHtml(item.prompt || '(no prompt recorded)')}</div>
+    </div>`;
+}
+
+// A confirmed-gone artifact: no <img>/<audio> tag at all (there is nothing
+// to load), just the type/date + the original prompt so the record of
+// "what was asked for" survives even though the file itself did not.
+function renderLostItem(item) {
+  const tags = [
+    `<span class="media-tag type-${item.type}">${escapeHtml(item.type)}</span>`,
+    `<span class="media-tag">${formatWhen(item.created_at)}</span>`,
+    `<span class="media-tag missing">lost</span>`,
+  ];
+  return `
+    <div class="media-item lost">
+      <div class="media-tags">${tags.join('')}</div>
+      <div class="media-prompt">${escapeHtml(item.prompt || '(no prompt recorded)')}</div>
+    </div>`;
+}
+
+async function openMediaPanel() {
+  $mediaOverlay.classList.add('open');
+  document.body.classList.add('overlay-open');
+  $mediaList.innerHTML = '<div id="media-empty">Gazing into the archive…</div>';
+  try {
+    const data = await apiFetch('/api/edge/media');
+    const items = data.items || [];
+    const available = items.filter(i => !i.file_missing);
+    const lost = items.filter(i => i.file_missing);
+    $mediaCount.textContent = available.length ? `${available.length} item${available.length===1?'':'s'}` : '';
+
+    let html = available.length
+      ? available.map(renderMediaItem).join('')
+      : '<div id="media-empty">Nothing generated yet — ask for an image or a spoken line.</div>';
+
+    if (lost.length) {
+      html += `<div class="media-lost-toggle" onclick="
+          const list = this.nextElementSibling;
+          const open = list.classList.toggle('open');
+          this.querySelector('.arrow').textContent = open ? '▾' : '▸';
+        "><span class="arrow">▸</span> ${lost.length} lost — pre-dates persistent storage, gone after a restart</div>
+        <div class="media-lost-list">${lost.map(renderLostItem).join('')}</div>`;
+    }
+
+    $mediaList.innerHTML = html;
+  } catch(e) {
+    $mediaList.innerHTML = `<div id="media-empty">Could not load the media archive: ${escapeHtml(e.message)}</div>`;
+  }
+}
+
+function closeMediaPanel() {
+  $mediaOverlay.classList.remove('open');
+  document.body.classList.remove('overlay-open');
+}
+
+$mediaBtn.addEventListener('click', openMediaPanel);
+$mediaClose.addEventListener('click', closeMediaPanel);
+
+/* Read-only instruments. Cursor polling follows the journal without tying up a server worker.
+   Only one request runs at a time; close/pause/hide cancels it. Never touches chat. */
+const inspect = {mode:null, timer:null, controller:null, generation:0, paused:false, cursor:'', firstLoad:true};
+const inspectEl = document.getElementById('inspect-overlay');
+const inspectContent = document.getElementById('inspect-content');
+const inspectState = document.getElementById('inspect-state');
+const inspectPause = document.getElementById('inspect-pause');
+function stopInspect() {
+  inspect.generation++;
+  clearTimeout(inspect.timer);
+  if (inspect.controller) inspect.controller.abort();
+}
+function closeInspect() {
+  stopInspect(); inspect.mode = null; inspectEl.style.display = 'none';
+  document.body.classList.remove('overlay-open');
+}
+function formatLogEntry(line) {
+  const el = document.createElement('div');
+  const text = String(line.text || '');
+  const m = text.match(/^(\d{2}:\d{2}:\d{2})\s+\[([\w.-]+)\]\s+([A-Z]+):\s*([\s\S]*)$/);
+  if (m) {
+    const [, timeStr, tag, level, body] = m;
+    const tagClass = 'tag-' + tag.replace(/[^a-zA-Z0-9_-]/g, '').toLowerCase();
+    const lvlClass = 'lvl-' + level.toLowerCase();
+    el.className = 'log-entry ' + lvlClass;
+    let bodyHtml = escapeHtml(body);
+    if (body.includes('**')) {
+      bodyHtml = bodyHtml.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+    }
+    el.innerHTML = `<span class="log-time">${escapeHtml(timeStr)}</span><span class="log-tag ${tagClass}">[${escapeHtml(tag)}]</span><span class="log-lvl">${escapeHtml(level)}</span><span class="log-body">${bodyHtml}</span>`;
+  } else {
+    let t = '';
+    if (line.time) {
+      const d = new Date(Number(line.time) / 1000);
+      if (!isNaN(d)) t = d.toLocaleTimeString();
+    }
+    el.className = 'log-entry log-misc';
+    el.innerHTML = `${t ? `<span class="log-time">${escapeHtml(t)}</span>` : ''}<span class="log-body">${escapeHtml(text)}</span>`;
+  }
+  return el;
+}
+async function refreshInspect() {
+  if (!inspect.mode || inspect.paused || document.hidden) return;
+  const generation = inspect.generation, mode = inspect.mode;
+  inspect.controller = new AbortController();
+  const timeout = setTimeout(() => inspect.controller && inspect.controller.abort(), 8000);
+  try {
+    const path = mode === 'logs' ? '/api/edge/logs?cursor=' + encodeURIComponent(inspect.cursor) : '/api/edge/status';
+    const data = await apiFetch(path, {signal:inspect.controller.signal});
+    if (generation !== inspect.generation) return;
+    if (mode === 'logs') {
+      const pinned = inspectContent.scrollHeight - inspectContent.scrollTop - inspectContent.clientHeight < 80;
+      if (inspect.firstLoad && (data.lines || []).length > 0) {
+        inspectContent.innerHTML = '';
+        inspect.firstLoad = false;
+      }
+      if (data.possibly_skipped) {
+        const skipEl = document.createElement('div');
+        skipEl.className = 'log-entry log-misc';
+        skipEl.innerHTML = '<span class="log-body" style="color:var(--gold);">… Busy journal: showing latest entries; some earlier lines skipped.</span>';
+        inspectContent.appendChild(skipEl);
+      }
+      const fragment = document.createDocumentFragment();
+      for (const line of data.lines || []) {
+        fragment.appendChild(formatLogEntry(line));
+      }
+      if (fragment.children.length > 0) {
+        inspectContent.appendChild(fragment);
+      } else if (inspect.firstLoad && inspectContent.textContent.includes('Loading…')) {
+        inspectContent.innerHTML = '<div style="color:var(--text-dim);padding:8px 0;">Waiting for journal entries…</div>';
+      }
+      inspect.cursor = data.cursor || inspect.cursor;
+      while (inspectContent.children.length > 400) {
+        inspectContent.removeChild(inspectContent.firstChild);
+      }
+      if (pinned) inspectContent.scrollTop = inspectContent.scrollHeight;
+      inspectState.textContent = 'Following galadriel.service · 2s refresh · ' + inspectContent.children.length + ' entries';
+    } else {
+      inspectContent.innerHTML = renderMarkdown(data.report);
+      inspectState.textContent = 'Live /status · refreshed ' + new Date().toLocaleTimeString();
+    }
+  } catch (err) {
+    if (generation === inspect.generation) {
+      inspectState.textContent = 'Disconnected — ' + err.message + ' · retrying';
+      // A cursor may expire across journal rotation; reset on explicit rejection.
+      if (err.message.includes('cursor')) inspect.cursor = '';
+    }
+  } finally {
+    clearTimeout(timeout);
+    if (generation === inspect.generation && inspect.mode && !inspect.paused && !document.hidden)
+      inspect.timer = setTimeout(refreshInspect, mode === 'logs' ? 2000 : 5000);
+  }
+}
+function openInspect(mode) {
+  closeMediaPanel(); stopInspect();
+  inspect.mode = mode; inspect.paused = false; inspect.cursor = ''; inspect.firstLoad = true;
+  inspectContent.className = mode === 'status' ? 'status-view' : 'logs-view';
+  inspectContent.innerHTML = '<div style="color:var(--text-dim);padding:8px 0;">Loading…</div>';
+  inspectState.textContent = '';
+  inspectPause.textContent = 'Pause';
+  document.getElementById('inspect-title').textContent = mode === 'logs' ? '≋ Service Logs' : '◈ Harness Status';
+  inspectEl.style.display = 'flex'; document.body.classList.add('overlay-open');
+  refreshInspect();
+}
+document.getElementById('cmd-status-btn').addEventListener('click', () => openInspect('status'));
+document.getElementById('cmd-logs-btn').addEventListener('click', () => openInspect('logs'));
+document.getElementById('inspect-close').addEventListener('click', closeInspect);
+inspectPause.addEventListener('click', () => {
+  stopInspect(); inspect.paused = !inspect.paused;
+  inspectPause.textContent = inspect.paused ? 'Resume' : 'Pause';
+  if (inspect.paused) inspectState.textContent = 'Paused'; else refreshInspect();
+});
+document.addEventListener('visibilitychange', () => {
+  stopInspect(); if (!document.hidden) refreshInspect();
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && inspectEl.style.display !== 'none') closeInspect();
+});
+
+/* ── Boot ── */
+loadHistory();
+restartPolling();
+
+/* ── Staged images ── */
+const $imgStrip = document.getElementById('img-preview-strip');
+let stagedImages = [];
+function addStagedImage(file) {
+  if (stagedImages.length >= 4) return;
+  const r = new FileReader();
+  r.onload = e => {
+    const [hdr,b64] = e.target.result.split(',');
+    const mime = hdr.match(/data:([^;]+)/)[1];
+    const idx = stagedImages.length;
+    stagedImages.push({mime,b64});
+    const wrap = document.createElement('div');
+    wrap.className = 'img-thumb-wrap'; wrap.dataset.idx = idx;
+    wrap.innerHTML = `<img src="${e.target.result}"><button class="img-thumb-remove">✕</button>`;
+    wrap.querySelector('.img-thumb-remove').addEventListener('click', () => {
+      stagedImages.splice(+wrap.dataset.idx, 1); wrap.remove();
+      [...$imgStrip.querySelectorAll('.img-thumb-wrap')].forEach((w,i)=>w.dataset.idx=i);
+      if (!stagedImages.length) $imgStrip.classList.remove('visible');
+    });
+    $imgStrip.appendChild(wrap); $imgStrip.classList.add('visible');
+  };
+  r.readAsDataURL(file);
+}
+let stagedFiles = [];
+function addStagedFile(file) {
+  if (stagedFiles.length >= 4) return;
+  const r = new FileReader();
+  r.onload = e => {
+    const [hdr,b64] = e.target.result.split(',');
+    const mime = (hdr.match(/data:([^;]+)/)||[])[1] || file.type || 'application/octet-stream';
+    const idx = stagedFiles.length;
+    stagedFiles.push({name:file.name, mime, b64});
+    const chip = document.createElement('div');
+    chip.className = 'doc-chip'; chip.dataset.idx = idx;
+    chip.innerHTML = `📄 ${escapeHtml(file.name)}<button>✕</button>`;
+    chip.querySelector('button').addEventListener('click', () => {
+      stagedFiles.splice(+chip.dataset.idx, 1); chip.remove();
+      [...$imgStrip.querySelectorAll('.doc-chip')].forEach((c,i)=>c.dataset.idx=i);
+      if (!stagedImages.length && !stagedFiles.length) $imgStrip.classList.remove('visible');
+    });
+    $imgStrip.appendChild(chip); $imgStrip.classList.add('visible');
+  };
+  r.readAsDataURL(file);
+}
+function isDocFile(f) {
+  const n = (f.name||'').toLowerCase();
+  return f.type === 'application/pdf' || f.type === 'text/plain' || f.type === 'text/markdown' ||
+         f.type === 'application/json' || n.endsWith('.pdf') || n.endsWith('.txt') ||
+         n.endsWith('.md') || n.endsWith('.json');
+}
+function handlePaste(e) {
+  const items = (e.clipboardData||e.originalEvent?.clipboardData)?.items;
+  if (!items) return;
+  for (const item of items) {
+    if (item.type.startsWith('image/')) { e.preventDefault(); addStagedImage(item.getAsFile()); return; }
+  }
+}
+// Image paste: document-level capture handles it.
+// Text paste: NOT intercepted — falls through to the focused input naturally.
+document.addEventListener('paste', handlePaste);
+document.getElementById('img-file-input')?.addEventListener('change', e => {
+  for (const f of e.target.files) if (f.type.startsWith('image/')) addStagedImage(f);
+  e.target.value = '';
+});
+document.getElementById('doc-file-input')?.addEventListener('change', e => {
+  for (const f of e.target.files) if (isDocFile(f)) addStagedFile(f);
+  e.target.value = '';
+});
+document.addEventListener('dragover', e => e.preventDefault());
+document.addEventListener('drop', e => {
+  e.preventDefault();
+  for (const f of e.dataTransfer.files) {
+    if (f.type.startsWith('image/')) addStagedImage(f);
+    else if (isDocFile(f)) addStagedFile(f);
+  }
+});
+
+</script>
+</body>
+</html>
