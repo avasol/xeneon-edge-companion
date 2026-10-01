@@ -34,6 +34,28 @@ The Tower validates this token on every endpoint. Requests with a missing or inv
 
 The token is configured on both sides (Tower `.env` as `EDGE_TOKEN`, widget as a configuration property) and never rotated by the protocol itself. Rotation is a manual administrative action.
 
+### 2.1 CORS — every sent header must be allowed
+
+The widget runs in a browser (QtWebEngine/Chromium), so the Tower is a
+cross-origin service. Before any non-simple request, the browser sends a CORS
+preflight (`OPTIONS`) and the Tower must list every request header the widget
+attaches in `Access-Control-Allow-Headers`. A header the widget sends but the
+Tower omits is rejected **before the request is sent** — the fetch fails with
+"Failed to fetch" and the feature dies silently.
+
+**Rule:** `Access-Control-Allow-Headers` is a contract that must move in
+lock-step with the widget's `headers()`. When you add a request header
+widget-side, add it here in the same change. Single-source the allow-list on
+the Tower (one constant, both the generic CORS helper and any SSE response
+point at it) so the two declarations cannot drift.
+
+> Worked example: a `X-Edge-Boot` header added widget-side for instance
+> diagnostics was not mirrored into `Access-Control-Allow-Headers`, and every
+> panel that used `fetch` (Status, Logs, Media) broke at the preflight while
+> direct `curl` and stubbed tests stayed green — neither exercises the browser
+> boundary.`
+
+
 ---
 
 ## 3. Endpoints
