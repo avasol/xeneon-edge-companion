@@ -3,7 +3,7 @@
   "id": "com.avasol.galadriel.edge",
   "name": "Galadriel",
   "description": "Secure comms channel to the Tower.",
-  "version": "1.3.32",
+  "version": "1.3.33",
   "preview_icon": "resources/icon.svg",
   "min_framework_version": "1.0.0",
   "os": [
