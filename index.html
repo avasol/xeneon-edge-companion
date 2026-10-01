@@ -5,13 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="x-icue-sizes" content="L,XL">
 
-<meta name="x-icue-property" content="towerUrl"    data-type="textfield"
-      data-label="'Tower URL'"    data-default="'http://localhost:8080'">
-<meta name="x-icue-property" content="edgeToken"   data-type="textfield"
-      data-label="'Edge Token'"   data-default="''">
-<meta name="x-icue-property" content="pollSecs"    data-type="slider"
-      data-label="'Poll interval (s)'" data-default="3"
-      data-min="2" data-max="30" data-step="1" data-unit-label="'s'">
+<meta name="x-icue-property" content="towerUrl" data-type="textfield" data-label="Tower URL" data-default="'http://localhost:8080'">
+<meta name="x-icue-property" content="edgeToken" data-type="textfield" data-label="Edge Token" data-default="''">
+<meta name="x-icue-property" content="pollSecs" data-type="slider" data-label="Poll interval (s)" data-default="3" data-min="2" data-max="30" data-step="1" data-unit-label="s">
 
 <script type="application/json" id="x-icue-groups">
 [{"title": "'Connection'", "properties": ["towerUrl", "edgeToken", "pollSecs"]}]
@@ -1536,6 +1532,7 @@ body.overlay-open #mirror-img {
       </button>
       <button class="special-cmd-btn" id="cmd-status-btn"><span class="cmd-icon">◈</span><span>Status</span></button>
       <button class="special-cmd-btn" id="cmd-logs-btn"><span class="cmd-icon">≋</span><span>Logs</span></button>
+      <button class="special-cmd-btn" id="cmd-diag-btn" title="Show exactly what iCUE injected"><span class="cmd-icon">⌁</span><span>Diag</span></button>
     </div>
 
   </div><!-- /#main -->
@@ -1656,7 +1653,7 @@ body.overlay-open #mirror-img {
 
 <script>
 /* ═══════════════════════════════════════════════════════════════════════
-   GALADRIEL EDGE WIDGET v1.3.33
+   GALADRIEL EDGE WIDGET v1.3.34
    ═══════════════════════════════════════════════════════════════════════ */
 
 /* ── iCUE property read (Corsair SDK contract) ─────────────────────────────
@@ -2592,7 +2589,7 @@ function restartPolling() {
   pollTimer = setInterval(poll, CFG.poll * 1000);
 }
 
-const WIDGET_VERSION = '1.3.33';
+const WIDGET_VERSION = '1.3.34';
 
 /* ── Input event wiring ── */
 $input.addEventListener('keydown', e => {
@@ -2860,6 +2857,7 @@ function openInspect(mode) {
 }
 document.getElementById('cmd-status-btn').addEventListener('click', () => openInspect('status'));
 document.getElementById('cmd-logs-btn').addEventListener('click', () => openInspect('logs'));
+document.getElementById('cmd-diag-btn').addEventListener('click', openDiag);
 document.getElementById('inspect-close').addEventListener('click', closeInspect);
 inspectPause.addEventListener('click', () => {
   stopInspect(); inspect.paused = !inspect.paused;
@@ -2873,6 +2871,68 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape' && inspectEl.style.display !== 'none') closeInspect();
 });
 
+/* ── DIAGNOSTIC — what did iCUE actually inject? ──────────────────────────
+   The widget reads its settings from iCUE-injected globals. When a value does
+   not arrive, "settings not saving" is indistinguishable from "iCUE never sent
+   it" without looking. This reports, verbatim, what iCUE put in the page — the
+   global object, the iCUE_initialized flag, the device object, plugin nouns, and
+   for each configured property the shapes it is (and is not) reachable in. The
+   token VALUE is never printed, only presence and length. */
+function collectDiag() {
+  const nameTypes = (name) => {
+    const out = [];
+    try { out.push('win:' + (typeof window[name])); } catch (e) { out.push('win:ERR'); }
+    try { out.push('own:' + (Object.prototype.hasOwnProperty.call(window, name) ? 'Y' : 'N')); } catch (e) {}
+    try { out.push('bare:' + Function('return typeof ' + name)()); } catch (e) { out.push('bare:ERR'); }
+    return out.join(' ');
+  };
+  const valLen = (name) => {
+    try {
+      const v = Function('return typeof ' + name + ' !== "undefined" ? ' + name + ' : undefined')();
+      if (v === undefined) return 'absent';
+      if (typeof v === 'string') return 'str(' + v.length + ')';
+      return typeof v;
+    } catch (e) { return 'ERR'; }
+  };
+  const L = [];
+  L.push('══ iCUE PROPERTY DELIVERY DIAGNOSTIC ══');
+  L.push('widget build: ' + WIDGET_VERSION);
+  L.push('user agent  : ' + (navigator && navigator.userAgent ? navigator.userAgent : 'n/a'));
+  L.push('');
+  L.push('── iCUE API globals ──');
+  L.push('iCUE_initialized : ' + (typeof iCUE_initialized === 'undefined' ? 'ABSENT' : String(iCUE_initialized)));
+  L.push('typeof iCUE      : ' + (typeof iCUE));
+  try { if (typeof iCUE !== 'undefined' && iCUE) {
+    L.push('  iCUELanguage : ' + iCUE.iCUELanguage);
+    L.push('  fpsLimit     : ' + iCUE.fpsLimit);
+    L.push('  isPreview    : ' + iCUE.isPreview);
+  }} catch (e) {}
+  L.push('typeof device    : ' + (typeof device));
+  try { if (typeof device !== 'undefined' && device) L.push('  device = ' + JSON.stringify(device)); } catch (e) {}
+  try {
+    const pk = (window.plugins && typeof window.plugins === 'object') ? Object.keys(window.plugins) : [];
+    L.push('window.plugins   : ' + (pk.length ? pk.join(', ') : '(none)'));
+  } catch (e) { L.push('window.plugins   : ERR'); }
+  L.push('icueEvents       : ' + (typeof window.icueEvents === 'object' ? Object.keys(window.icueEvents).join(', ') : 'NO'));
+  L.push('');
+  L.push('── configured properties (value NEVER printed) ──');
+  ['towerUrl', 'edgeToken', 'pollSecs'].forEach(n => L.push(n.padEnd(9) + ' : ' + nameTypes(n) + ' | len ' + valLen(n)));
+  L.push('');
+  L.push('── widget config in force ──');
+  L.push('towerUrl : ' + (CFG.url || '(empty)'));
+  L.push('edgeToken: ' + (CFG.token ? 'PRESENT str(' + CFG.token.length + ')' : 'EMPTY'));
+  L.push('pollSecs : ' + CFG.poll + 's');
+  return L.join('\n');
+}
+function openDiag() {
+  closeMediaPanel(); stopInspect();
+  inspectContent.className = 'logs-view';
+  inspectContent.innerHTML = '<pre style="white-space:pre-wrap;font-size:15px;line-height:1.5;">' + escapeHtml(collectDiag()) + '</pre>';
+  inspectState.textContent = '';
+  document.getElementById('inspect-title').textContent = '⌁ iCUE Delivery Diagnostic';
+  inspectEl.style.display = 'flex'; document.body.classList.add('overlay-open');
+}
+
 /* ── Boot ── */
 /* iCUE injects property values asynchronously. onICUEInitialized /
    onDataUpdated are the primary door; these two short delayed re-reads hedge
@@ -2881,8 +2941,11 @@ document.addEventListener('keydown', e => {
 reloadConfig();
 loadHistory();
 restartPolling();
-setTimeout(reloadConfig, 400);
-setTimeout(reloadConfig, 1500);
+/* SDK-documented late-load guard + hedges for late injection. */
+if (typeof iCUE_initialized !== 'undefined' && iCUE_initialized) reloadConfig();
+setTimeout(reloadConfig, 300);
+setTimeout(reloadConfig, 1000);
+setTimeout(reloadConfig, 2500);
 
 /* ── Staged images ── */
 const $imgStrip = document.getElementById('img-preview-strip');
