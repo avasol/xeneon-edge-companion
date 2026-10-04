@@ -56,6 +56,16 @@ point at it) so the two declarations cannot drift.
 > boundary.`
 
 
+### 2.2 Errors must be readable too
+
+Every refusal (`403` for a wrong token, `503` when the agent loop is down) must
+carry `Access-Control-Allow-Origin` exactly like a success. Without it the
+browser hides the status code and the widget sees only "Failed to fetch", so a
+rejected token is indistinguishable from an unreachable Tower. Since v1.3.35 the
+widget's SETTINGS row probes `GET /api/edge/status` and reports `conn ✓`,
+`conn ✗` (rejected, 403) or `conn ✗` (unreachable); that diagnosis is only as
+honest as the Tower's CORS on its error responses.
+
 ---
 
 ## 3. Endpoints
