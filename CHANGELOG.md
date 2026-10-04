@@ -2,6 +2,24 @@
 
 All notable changes to the Xeneon Edge Companion widget will be documented in this file.
 
+## [1.3.35] - 2026-10-04
+### Fixed
+- **Late settings injection**: iCUE can inject the Edge Token after every boot-time re-read without firing an event, leaving the widget with an empty token (every request refused). The widget now re-reads its settings every 2 s while the token is missing, and trims whitespace from the token and Tower URL.
+- **Connection probe**: the SETTINGS row now probes the Tower (`/api/edge/status`) and reports `conn ✓`, `conn ✗` (rejected) or `conn ✗` (unreachable), instead of only checking that a token is present.
+- **Thinking state**: every live stream event (tool progress, text) re-lights the thinking animation if an idle watchdog switched it off mid-turn. The animation itself is unchanged.
+### Added
+- **Selection copy chip**: iCUE swallows Ctrl+C. Mark text in the chat or in the Status/Diag/Logs panel and a copy chip appears; one click copies it.
+- **Diag**: reports whether the OS reduced-motion setting is on.
+- **Tests**: `tests/` (pytest + Node.js).
+
+## [1.3.34] - 2026-10-01
+### Fixed
+- **iCUE delivery diagnostic**: a Diag panel reports exactly what iCUE injected (the token value is never printed); SDK-documented late-load guard; spec-exact single-line property metas; required `min_app_version`.
+
+## [1.3.33] - 2026-10-01
+### Fixed
+- **Two-pass property read**: a value injected as a top-level lexical global is now found (window property first, then a bare-identifier lookup), with delayed boot re-reads and a visible SETTINGS readout.
+
 ## [1.3.32] - 2026-09-18
 ### Fixed
 - **Topbar Clock Layout Containment**: Replaced `contain: strict` with `contain: layout style` and explicit dimensions (`width: 120px; height: 24px; line-height: 24px`) on `#topbar-time`. In Chromium, `contain: strict` enforces size containment without a default height, collapsing the element to 0px height and clipping it under paint containment. The timestamp now renders crisply while remaining isolated from surrounding layouts.

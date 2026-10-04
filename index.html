@@ -1408,6 +1408,32 @@ body.overlay-open #mirror-img {
 }
 .msg:hover .btn-copy { opacity: 1; }
 .btn-copy.copied { color: var(--pri); opacity: 1; }
+/* ── Selection copy chip ──────────────────────────────────────────────
+   iCUE's host shell swallows Ctrl+C before the webview sees it, so a
+   keyboard copy of a marked selection never lands. Mark text and a small
+   copy chip appears at the bottom-right of the selection; one click, same
+   proven textarea/execCommand path. */
+#sel-copy {
+  position: fixed;
+  z-index: 200;
+  display: none;
+  align-items: center;
+  padding: 4px 10px;
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  letter-spacing: .06em;
+  color: var(--text-sec);
+  background: rgba(18,24,34,.94);
+  border: 1px solid var(--pri-mid);
+  border-radius: 5px;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(0,0,0,.5);
+  user-select: none;
+  -webkit-user-select: none;
+  transition: background .12s, color .12s;
+}
+#sel-copy:hover { background: rgba(30,40,56,.98); color: #fff; }
+#sel-copy.copied { color: var(--pri); border-color: var(--pri); }
 .bubble img.md-img{max-width:100%;max-height:480px;border-radius:6px;
                    border:1px solid var(--border);display:block;margin:8px 0}
 .bubble audio.md-audio{width:100%;display:block;margin:8px 0;
@@ -1692,8 +1718,8 @@ function getSetting(name, fallback) {
 function readConfig() {
   const poll = parseInt(getSetting('pollSecs', '3'), 10);
   return {
-    url:   getSetting('towerUrl',  'http://localhost:8080'),
-    token: getSetting('edgeToken', ''),
+    url:   String(getSetting('towerUrl',  'http://localhost:8080')).trim(),
+    token: String(getSetting('edgeToken', '')).trim(),
     poll:  Math.max(2, Math.min(30, (isNaN(poll) ? 3 : poll))),
   };
 }
@@ -1713,11 +1739,34 @@ function renderCfgDiag() {
   if (!$c) return;
   const tok = CFG.token ? 'tok \u2713' : 'tok \u2717';
   const url = CFG.url   ? 'url \u2713' : 'url \u2717';
-  $c.textContent = `${tok} \u00b7 ${url} \u00b7 ${CFG.poll}s`;
-  $c.style.color = CFG.token ? '' : 'var(--status-error, #c06060)';
-  $c.title = CFG.token
-    ? 'iCUE delivered your settings — token present.'
-    : 'iCUE has NOT delivered an Edge Token. Open the widget settings, paste it, and this row should turn green.';
+  const conn = {unknown:'conn \u00b7', checking:'conn \u2026', ok:'conn \u2713',
+                rejected:'conn \u2717', unreachable:'conn \u2717'}[connState] || 'conn \u00b7';
+  $c.textContent = `${tok} \u00b7 ${url} \u00b7 ${conn} \u00b7 ${CFG.poll}s`;
+  const bad = !CFG.token || connState === 'rejected' || connState === 'unreachable';
+  $c.style.color = bad ? 'var(--status-error, #c06060)' : '';
+  $c.title = !CFG.token
+    ? 'iCUE has NOT delivered an Edge Token. Open the widget settings, paste it, and this row should turn green.'
+    : connState === 'rejected'
+      ? 'The Tower REJECTED your token (403). Re-enter it in the widget settings; a stale value is being sent.'
+      : connState === 'unreachable'
+        ? 'The Tower did not answer. Check the Tower URL and that the Tower is running.'
+        : 'iCUE delivered your settings and the Tower accepted the token.';
+}
+
+/* Presence of a token is NOT validity: the Tower answers a wrong token with a
+   403. This row PROBES the door so a rejected token reads as rejected instead
+   of silently green. Never prints the token. */
+let connState = 'unknown';
+async function verifyConnection() {
+  if (!CFG.token || !CFG.url) { connState = 'unknown'; renderCfgDiag(); return; }
+  connState = 'checking'; renderCfgDiag();
+  try {
+    const res = await fetch(CFG.url.replace(/\/$/, '') + '/api/edge/status', { headers: headers() });
+    connState = res.ok ? 'ok' : (res.status === 403 ? 'rejected' : 'unreachable');
+  } catch (e) {
+    connState = 'unreachable';
+  }
+  renderCfgDiag();
 }
 
 function reloadConfig() {
@@ -1726,7 +1775,10 @@ function reloadConfig() {
   const tokenAppeared = (!CFG.token && cfg.token);
   CFG = cfg;
   renderCfgDiag();
-  if (changed) restartPolling();       // only restart if something actually changed
+  if (changed) {
+    restartPolling();     // only restart if something actually changed
+    verifyConnection();   // re-probe the door whenever settings move
+  }
   if (tokenAppeared) {                  // the token landed after boot: load history
     loadHistory();
   }
@@ -1956,6 +2008,12 @@ function setThinking(on) {
     $typing.classList.remove('visible');
     $wave.classList.remove('active');
   }
+}
+
+/* A live stream event proves the turn is running: re-light the mirror if a
+   watchdog (or a reload) put it out mid-turn. Idempotent. */
+function reassertThinking() {
+  if (!$mirror.classList.contains('thinking')) setThinking(true);
 }
 
 /* ── API helpers ── */
@@ -2286,6 +2344,7 @@ async function sendMessage() {
           // Since 2026-09-05 the server FORWARDS these (it used to swallow
           // them), labelled either with the tool name, "working", or
           // "queued behind another in-flight turn" — say which.
+          reassertThinking();
           const v = String(evt.v || '');
           if (v.startsWith('queued')) {
             setStatus('sending', 'QUEUED — another turn is running');
@@ -2300,6 +2359,7 @@ async function sendMessage() {
           lastCost = evt.v || null;
 
         } else if (evt.t === 'token') {
+          reassertThinking();
           ensureBubble();
           bubbleText += evt.v;
           // Buffered by design: no raw/unformatted paint mid-stream (was
@@ -2458,6 +2518,91 @@ function promptCopy(text, btn) {
   openLinkSheet(text, 'Copy — select the text below');
 }
 
+/* ── Selection copy chip ──────────────────────────────────────────────
+   The iCUE host shell consumes Ctrl+C, so the keyboard path can never fire.
+   Instead, any text marked inside the chat or the Status/Diag/Logs panel
+   floats a "copy" chip at the bottom-right of the selection; one click runs
+   the proven textarea path. */
+const $selCopy = document.createElement('button');
+$selCopy.id = 'sel-copy';
+$selCopy.type = 'button';
+$selCopy.textContent = '\u2398 copy';
+document.body.appendChild($selCopy);
+let selCopySuppressUntil = 0;
+
+function selectionInMessages() {
+  const sel = window.getSelection ? window.getSelection() : null;
+  if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return null;
+  const text = sel.toString();
+  if (!text || !text.trim()) return null;
+  const inMsgs = $msgs.contains(sel.anchorNode) && $msgs.contains(sel.focusNode);
+  const inInspect = inspectContent.contains(sel.anchorNode) && inspectContent.contains(sel.focusNode);
+  if (!inMsgs && !inInspect) return null;
+  return { sel, text };
+}
+
+function positionSelCopy() {
+  if (Date.now() < selCopySuppressUntil) return;
+  const hit = selectionInMessages();
+  if (!hit) { $selCopy.style.display = 'none'; return; }
+  const range = hit.sel.getRangeAt(0);
+  const rects = range.getClientRects();
+  const last = rects.length ? rects[rects.length - 1] : range.getBoundingClientRect();
+  const pad = 6;
+  $selCopy.style.display = 'inline-flex';   // show first, so we measure the real chip
+  const w = $selCopy.offsetWidth || 78;
+  const h = $selCopy.offsetHeight || 26;
+  let left = last.right + pad;
+  let top  = last.bottom + pad;
+  if (left + w > window.innerWidth - 4)  left = Math.max(4, last.right - w);
+  if (top + h > window.innerHeight - 4)  top  = Math.max(4, last.top - h - 2);
+  $selCopy.style.left = left + 'px';
+  $selCopy.style.top  = top + 'px';
+}
+
+$selCopy.addEventListener('mousedown', e => e.preventDefault()); // preserve selection
+$selCopy.addEventListener('click', () => {
+  const hit = selectionInMessages();
+  if (!hit) { $selCopy.style.display = 'none'; return; }
+  const hideSoon = (ms) => {
+    selCopySuppressUntil = Date.now() + (ms || 900);
+    setTimeout(() => { $selCopy.style.display = 'none'; }, ms || 900);
+  };
+  copyTextToClipboard(hit.text, () => {
+    $selCopy.textContent = '\u2713 copied';
+    $selCopy.classList.add('copied');
+    setStatus('online', 'COPIED ' + hit.text.length + ' CHARS');
+    hideSoon(900);
+    setTimeout(() => {
+      $selCopy.textContent = '\u2398 copy';
+      $selCopy.classList.remove('copied');
+      if ($stTxt.textContent.startsWith('COPIED')) setStatus('online', 'TOWER ONLINE');
+    }, 1200);
+  }, () => {
+    $selCopy.textContent = '\u26a0 sheet';
+    hideSoon(400);
+    openLinkSheet(hit.text, 'Copy — select the text below');
+    setTimeout(() => { $selCopy.textContent = '\u2398 copy'; }, 2000);
+  });
+});
+
+document.addEventListener('mouseup', () => setTimeout(positionSelCopy, 0));
+document.addEventListener('keyup', e => {
+  if (e.shiftKey || e.key === 'Shift') setTimeout(positionSelCopy, 0);
+});
+$msgs.addEventListener('scroll', () => {
+  if ($selCopy.style.display !== 'none') positionSelCopy();
+});
+document.getElementById('inspect-content').addEventListener('scroll', () => {
+  if ($selCopy.style.display !== 'none') positionSelCopy();
+});
+document.addEventListener('mousedown', e => {
+  if (e.target !== $selCopy) $selCopy.style.display = 'none';
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') $selCopy.style.display = 'none';
+});
+
 /* ── Link sheet: themed, in-widget replacement for the native prompt ── */
 const $linkSheet = document.getElementById('link-sheet');
 const $linkSheetBody = document.getElementById('link-sheet-body');
@@ -2589,7 +2734,7 @@ function restartPolling() {
   pollTimer = setInterval(poll, CFG.poll * 1000);
 }
 
-const WIDGET_VERSION = '1.3.34';
+const WIDGET_VERSION = '1.3.35';
 
 /* ── Input event wiring ── */
 $input.addEventListener('keydown', e => {
@@ -2900,6 +3045,10 @@ function collectDiag() {
   L.push('user agent  : ' + (navigator && navigator.userAgent ? navigator.userAgent : 'n/a'));
   L.push('');
   L.push('── iCUE API globals ──');
+  try {
+    const rm = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    L.push('reduced motion   : ' + (rm ? 'ON (OS animation effects off: mirror stays still)' : 'off'));
+  } catch (e) { L.push('reduced motion   : ERR'); }
   L.push('iCUE_initialized : ' + (typeof iCUE_initialized === 'undefined' ? 'ABSENT' : String(iCUE_initialized)));
   L.push('typeof iCUE      : ' + (typeof iCUE));
   try { if (typeof iCUE !== 'undefined' && iCUE) {
@@ -2941,11 +3090,18 @@ function openDiag() {
 reloadConfig();
 loadHistory();
 restartPolling();
+verifyConnection();
 /* SDK-documented late-load guard + hedges for late injection. */
 if (typeof iCUE_initialized !== 'undefined' && iCUE_initialized) reloadConfig();
 setTimeout(reloadConfig, 300);
 setTimeout(reloadConfig, 1000);
 setTimeout(reloadConfig, 2500);
+/* iCUE can inject the token later than every hedge above and fire no event;
+   keep re-reading for the widget's lifetime while the token is missing. */
+function ensureConfig() {
+  if (!CFG.token) reloadConfig();
+}
+setInterval(ensureConfig, 2000);
 
 /* ── Staged images ── */
 const $imgStrip = document.getElementById('img-preview-strip');
