@@ -2052,8 +2052,7 @@ function renderMsg(role, text, time) {
       <div class="msg-time">${timeStr}${isGal ? ' <button class="btn-copy" title="Copy" onclick="copyMsg(this)">\u2398 copy</button>' : ''}</div>
     </div>`;
 
-  $msgs.appendChild(div);
-  $msgs.scrollTop = $msgs.scrollHeight;
+  placeInThread(div);
 
   msgCount++;
   $statMsgs.textContent = msgCount;
@@ -2078,8 +2077,7 @@ function renderError(text) {
       <div class="bubble">${escapeHtml(text)}</div>
       <div class="msg-time">${new Date().toTimeString().slice(0,8)}</div>
     </div>`;
-  $msgs.appendChild(div);
-  $msgs.scrollTop = $msgs.scrollHeight;
+  placeInThread(div);
 }
 
 function escapeHtml(s) {
@@ -2292,8 +2290,7 @@ async function sendMessage() {
         <div class="bubble streaming-bubble"></div>
         <div class="msg-time">${new Date().toTimeString().slice(0,8)}</div>
       </div>`;
-    $msgs.appendChild(wrap);
-    $msgs.scrollTop = $msgs.scrollHeight;
+    placeInThread(wrap);
     bubbleDiv = wrap.querySelector('.bubble');
   }
 
@@ -2654,12 +2651,13 @@ async function poll() {
   try {
     const data = await apiFetch('/api/edge/poll');
     pollFailures = 0;
-    if (data && data.type === 'approval') {
-      if (data.id !== lastApprovalId) {
-        lastApprovalId = data.id;
-        renderApproval(data.id, data.command);
-      }
-    } else if (data && data.message) {
+    if (data && Array.isArray(data.approvals)) {
+      syncApprovals(data.approvals, data.approvals_closed);
+    } else if (data && data.type === 'approval') {
+      // pre-1.3.36 Tower: one top-level card, deduped by id
+      syncApprovals([{ id: data.id, command: data.command }], []);
+    }
+    if (data && data.message) {
       if (data.id !== lastMsgId) {
         lastMsgId = data.id;
         if (sending) {
@@ -2683,13 +2681,77 @@ async function poll() {
   }
 }
 
+/* ── THE PINNED CARD (1.3.36) ──────────────────────────────────────────
+   A pending approval card is ALWAYS the last thing in the thread. Every
+   renderer places through here, so replies, the streaming bubble, dead drops
+   and knock messages land ABOVE a waiting card. */
+function placeInThread(div) {
+  const pending = $msgs.querySelector('.msg.approval.pending');
+  if (pending) $msgs.insertBefore(div, pending);
+  else $msgs.appendChild(div);
+  $msgs.scrollTop = $msgs.scrollHeight;
+}
+
+/* The Tower serves pending approvals on EVERY poll to every webview (no
+   more single-consumer pop that let the iCUE preview eat a card). A VISIBLE,
+   non-preview panel sends a receipt; an unreceipted card is answered elsewhere. */
+const renderedApprovals = new Set();
+const ackedApprovals = new Set();
+
+function panelVisible() {
+  if (document.hidden) return false;
+  try { if (typeof iCUE === 'object' && iCUE && iCUE.isPreview === true) return false; } catch (e) {}
+  return true;
+}
+
+function syncApprovals(pending, closed) {
+  (pending || []).forEach(a => {
+    if (!renderedApprovals.has(a.id)) {
+      renderedApprovals.add(a.id);
+      renderApproval(a.id, a.command);
+    }
+    if (panelVisible() && !ackedApprovals.has(a.id)) {
+      ackedApprovals.add(a.id);
+      apiFetch(`/api/edge/approval/${a.id}/seen`, { method: 'POST' }).catch(() => ackedApprovals.delete(a.id));
+    }
+  });
+  (closed || []).forEach(c => settleApprovalCard(c.id, c.outcome));
+}
+
+const APPROVAL_OUTCOME_TEXT = {
+  approved: '✓ approved',
+  denied: '✕ denied',
+  timed_out: '⏰ timed out, nothing ran',
+  answered_elsewhere: '↗ answered elsewhere',
+  withdrawn: '⌁ withdrawn, nothing ran'
+};
+
+function settleApprovalCard(id, outcome) {
+  const card = $msgs.querySelector(`.msg.approval.pending[data-approval-id="${id}"]`);
+  if (!card) return;
+  card.classList.remove('pending');
+  const actions = card.querySelector('.approval-actions');
+  const err = (outcome === 'timed_out' || outcome === 'withdrawn') ? ' err' : '';
+  if (actions) actions.innerHTML = `<span class="approval-resolved${err}">${APPROVAL_OUTCOME_TEXT[outcome] || escapeHtml(String(outcome))}</span>`;
+}
+
+/* An approval must never hide behind Status / Logs / Diag / media / a link sheet. */
+function closeOverlaysForApproval() {
+  if (!document.body.classList.contains('overlay-open')) return;
+  try { closeInspect(); } catch (e) {}
+  try { closeMediaPanel(); } catch (e) {}
+  try { closeLinkSheet(); } catch (e) {}
+}
+
 /* ── Approval card — a red-tier command awaiting Yes/No ── */
 function renderApproval(id, command) {
   const el = document.getElementById('empty-state');
   if (el) el.remove();
+  closeOverlaysForApproval();
 
   const div = document.createElement('div');
-  div.className = 'msg approval';
+  div.className = 'msg approval pending';
+  div.setAttribute('data-approval-id', id);
   div.innerHTML = `
     <div class="msg-avatar">⚠</div>
     <div>
@@ -2704,15 +2766,8 @@ function renderApproval(id, command) {
       <div class="msg-time">${new Date().toTimeString().slice(0,8)}</div>
     </div>`;
 
-  // If an in-flight assistant response is currently streaming, the approval
-  // request was triggered by an action during that turn and must appear
-  // BEFORE the eventual reply. Otherwise, the reply renders above the approval card.
-  const activeStream = $msgs.querySelector('.msg.gal .streaming-bubble')?.closest('.msg.gal');
-  if (activeStream) {
-    $msgs.insertBefore(div, activeStream);
-  } else {
-    $msgs.appendChild(div);
-  }
+  // Always the bottom of the conversation (placeInThread keeps it there).
+  $msgs.appendChild(div);
   $msgs.scrollTop = $msgs.scrollHeight;
 }
 
@@ -2721,10 +2776,9 @@ async function resolveApproval(id, decision, btn) {
   actions.innerHTML = '<span class="approval-resolved">resolving…</span>';
   try {
     await apiFetch(`/api/edge/approve/${id}/${decision}`, { method: 'POST' });
-    actions.innerHTML = decision === 'yes'
-      ? '<span class="approval-resolved">✓ approved</span>'
-      : '<span class="approval-resolved">✕ denied</span>';
+    settleApprovalCard(id, decision === 'yes' ? 'approved' : 'denied');
   } catch (e) {
+    // 404 = already settled elsewhere; the next poll closes the card with the real outcome
     actions.innerHTML = `<span class="approval-resolved err">failed: ${escapeHtml(e.message)}</span>`;
   }
 }
@@ -2734,7 +2788,7 @@ function restartPolling() {
   pollTimer = setInterval(poll, CFG.poll * 1000);
 }
 
-const WIDGET_VERSION = '1.3.35';
+const WIDGET_VERSION = '1.3.36';
 
 /* ── Input event wiring ── */
 $input.addEventListener('keydown', e => {

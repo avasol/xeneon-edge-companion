@@ -210,6 +210,17 @@ Fetches an agent-generated media artifact (image, audio) by ID.
 - `404 Not Found` — media ID does not exist or has been garbage-collected
 - `403 Forbidden` — media exists but is not accessible to this edge token (multi-tenant deployments)
 
+### 3.8 Approval registry (OPTIONAL)
+
+A server MAY include an approval registry on **every** `GET /api/edge/poll` response, non-destructively (the same pending cards are served to every webview until they are settled):
+
+| Field | Type | Description |
+|---|---|---|
+| `approvals` | array | Pending approvals. Each entry carries `id` and the `tool`/`summary` fields the widget reads to render the card. |
+| `approvals_closed` | object | Map of `{ id: outcome }` for cards that have since been settled. |
+
+A server MAY also accept `POST /api/edge/approval/{id}/seen` (responds `204 No Content`) as a visibility receipt, sent once by a visible, non-preview panel. Servers that only send the `approval` SSE event keep working unchanged.
+
 ---
 
 ## 4. SSE Event Types

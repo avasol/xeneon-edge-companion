@@ -2,6 +2,11 @@
 
 All notable changes to the Xeneon Edge Companion widget will be documented in this file.
 
+## [1.3.36] - 2026-10-05
+### Fixed
+- **Approval cards pinned to the bottom**: a pending approval card now always sits at the end of the thread, so replies, streamed replies, dead drops and knocks render above it instead of hiding it. Opening a card closes any open overlay (Status/Logs/Diag, media, link sheet) so it is never hidden.
+- **Non-destructive approval registry**: the widget now consumes the Tower's `approvals` / `approvals_closed` fields on every poll, renders each pending card once, sends a single seen-receipt from a visible (non-preview) panel, and settles closed cards with an honest outcome — a timeout is reported as "timed out, nothing ran", never as denied.
+
 ## [1.3.35] - 2026-10-04
 ### Fixed
 - **Late settings injection**: iCUE can inject the Edge Token after every boot-time re-read without firing an event, leaving the widget with an empty token (every request refused). The widget now re-reads its settings every 2 s while the token is missing, and trims whitespace from the token and Tower URL.
