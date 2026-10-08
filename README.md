@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Latest Release](https://img.shields.io/github/v/release/avasol/xeneon-edge-companion?color=teal)](https://github.com/avasol/xeneon-edge-companion/releases)
-[![Protocol](https://img.shields.io/badge/Protocol-v1.0-teal)](PROTOCOL.md)
+[![Protocol](https://img.shields.io/badge/Protocol-v1.1-teal)](PROTOCOL.md)
 [![Form Factor](https://img.shields.io/badge/Form%20Factor-2560x720%20Ultrawide-purple)](#overview)
 
 > A dedicated, hardware-accelerated **2560×720 ultrawide AI companion terminal and HUD** engineered for Corsair iCUE and the Corsair Xeneon Flex / Edge display.

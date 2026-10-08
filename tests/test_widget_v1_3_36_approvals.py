@@ -135,7 +135,7 @@ def test_timeout_is_never_called_denied():
 def test_settle_unpins_the_card():
     stub = (
         "function CL(){ this.s = new Set(['msg','approval','pending']); }\n"
-        "CL.prototype.remove=function(c){this.s.delete(c)}; CL.prototype.contains=function(c){return this.s.has(c)};\n"
+        "CL.prototype.remove=function(c){this.s.delete(c)}; CL.prototype.add=function(c){this.s.add(c)}; CL.prototype.contains=function(c){return this.s.has(c)};\n"
         "var actions = { innerHTML: 'buttons' };\n"
         "var card = { classList: new CL(), querySelector: function(){ return actions; } };\n"
         "var $msgs = { querySelector: function(sel){ return sel.indexOf('e5') >= 0 && card.classList.contains('pending') ? card : null; } };\n"

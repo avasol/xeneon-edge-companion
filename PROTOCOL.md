@@ -1,4 +1,4 @@
-# Edge Protocol v1.0
+# Edge Protocol v1.1
 
 **A lightweight HTTP/SSE protocol for peripheral AI agent displays.**
 
@@ -14,7 +14,7 @@ This document is the canonical specification. It is implementation-agnostic — 
 - **Event streaming:** Server-Sent Events (`text/event-stream`)
 - **Other requests:** JSON over HTTP, standard `Content-Type: application/json`
 
-All responses carry `X-Protocol-Version: 1.0`.
+All responses carry `X-Protocol-Version: 1.1` (servers that only implement v1.0 send `1.0`).
 
 ---
 
@@ -221,11 +221,78 @@ A server MAY include an approval registry on **every** `GET /api/edge/poll` resp
 
 A server MAY also accept `POST /api/edge/approval/{id}/seen` (responds `204 No Content`) as a visibility receipt, sent once by a visible, non-preview panel. Servers that only send the `approval` SSE event keep working unchanged.
 
+### 3.9 Turn tracking (OPTIONAL, v1.1)
+
+A long turn can outlive its stream: a connection drops, a webview is suspended or
+respawned, and the reply finishes on the server while the widget never sees `done`.
+Turn tracking lets the widget notice and fetch the reply from history, which is
+always the source of truth.
+
+1. **The stream names its turn.** The first SSE event of a turn is
+   `{ "t": "turn", "v": <integer> }` (see §4.0).
+2. **Polls report finished turns.** Every `GET /api/edge/poll` response MAY carry:
+
+   ```json
+   "edge_turns": { "latest": 9, "done": [7, 8, 9], "unacked": [9], "epoch": "3f2a9c1b7d0e" }
+   ```
+
+   | Field | Type | Description |
+   |---|---|---|
+   | `latest` | integer | The newest turn id the server has started |
+   | `done` | array of integer | Recently finished turn ids (a server keeps at least the last 20) |
+   | `unacked` | array of integer | Finished turns no widget has acknowledged yet |
+   | `epoch` | string | Changes when the server restarts, so ids from different runs never collide |
+
+   A server with turn tracking returns `200` (not `204`) while it has any turn to report.
+3. **The widget acknowledges.** `POST /api/edge/turn/{id}/ack` once the turn's reply is
+   on screen: `200 {"status": "ok"}`, or `404` if the id is unknown or still running.
+
+**Widget rules (what makes recovery safe):**
+- A widget still waiting on a turn listed in `done` (after a short grace) cancels the
+  hung stream and loads the reply from history, quietly.
+- A **visible, idle** widget that sees a turn in `unacked` past the grace reloads from
+  history and then acknowledges it. A hidden or preview webview never acknowledges:
+  it must not swallow a reply the real panel never showed.
+- The reload **fetches first** and only replaces what is on screen when the fetch
+  succeeds. It acknowledges only after a successful render; on failure the turn stays
+  unacknowledged and the next poll retries. A failed reload never blanks the panel.
+
+### 3.10 `POST /api/edge/trace` (OPTIONAL, v1.1)
+
+The widget's own event log, so a failure on the display can be diagnosed from the server.
+
+```json
+{ "boot": "b-1696761234-x7", "version": "1.3.44",
+  "events": [ { "ev": "unacked-due", "ids": "9", "ts": 1696761234567 } ] }
+```
+
+- The widget keeps a bounded buffer and sends at most 100 events per request, about
+  every 30 seconds; it keeps them for the next try if the request fails.
+- Events never contain the token or message text.
+- A server bounds what it stores (count, key count, string length) and answers
+  `200 {"written": <n>}`. A server without this route can ignore it: the widget treats
+  any failure as "try later" and drops the oldest events past its buffer limit.
+
+### 3.11 Message titles (OPTIONAL, v1.1)
+
+A queued poll message MAY carry `title` (plain text), e.g. `"Morning"`; the widget shows
+it above the message.
+
 ---
 
 ## 4. SSE Event Types
 
 The `/api/edge/stream` endpoint emits the following event types. All events carry a JSON payload as the `data` field.
+
+### 4.0 `turn` (v1.1)
+
+The first event of a turn, naming it for turn tracking (§3.9).
+
+```json
+{ "t": "turn", "v": 9 }
+```
+
+A v1.0 widget ignores it.
 
 ### 4.1 `token`
 
@@ -327,6 +394,7 @@ This document is versioned independently of the widget and the Tower.
 | Protocol version | Minimum Tower version | Minimum Widget version | Notes |
 |---|---|---|---|
 | **1.0** | — (initial) | v1.3.32 | Initial protocol extraction |
+| **1.1** | — | v1.3.44 | Turn tracking (`turn` event, `edge_turns`, ack), widget trace, message titles. All additions are optional: a v1.1 widget works with a v1.0 server, and a v1.0 widget with a v1.1 server. |
 
 **Compatibility:** A widget implementing protocol v1.0 works with any Tower implementing v1.0, regardless of widget UI version or Tower backend. New protocol versions are additive — existing event types and endpoints are not removed within a major version.
 

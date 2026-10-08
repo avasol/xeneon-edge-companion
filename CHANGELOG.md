@@ -2,6 +2,19 @@
 
 All notable changes to the Xeneon Edge Companion widget will be documented in this file.
 
+## [1.3.44] - 2026-10-08
+Brings this repository level with the reference build (1.3.37–1.3.43 were not published separately). Implements Edge Protocol v1.1; every addition is optional, so v1.0 servers keep working.
+### Fixed
+- **Turn recovery**: a reply that finishes on the server while the stream hangs or drops (long tool-heavy turns, a suspended webview) is now fetched from history instead of never appearing. The stream names its turn; polls report finished turns.
+- **A recovery never blanks the panel**: the reload fetches history first and only replaces the messages when the fetch succeeds; the turn is acknowledged only after a successful render, so a failed reload is retried on the next poll.
+- **Reply order**: after a turn that raised approval cards, the finished reply moves below the settled cards (still above any pending card).
+### Added
+- **Acknowledged turns**: the widget acknowledges each reply it showed; a visible, idle widget picks up finished turns no widget acknowledged (e.g. after the webview was respawned). Hidden webviews never acknowledge.
+- **Widget trace**: a bounded event log, sent to the Tower every 30 s (`POST /api/edge/trace`), never containing the token or message text.
+- **Folded cards**: a settled approval card folds to one line; click to expand.
+- **Message titles**: a queued message may carry a title, shown above it.
+- **Tests**: turn recovery, acknowledgement, reload safety and card order.
+
 ## [1.3.36] - 2026-10-05
 ### Fixed
 - **Approval cards pinned to the bottom**: a pending approval card now always sits at the end of the thread, so replies, streamed replies, dead drops and knocks render above it instead of hiding it. Opening a card closes any open overlay (Status/Logs/Diag, media, link sheet) so it is never hidden.

@@ -1172,6 +1172,16 @@ body.overlay-open #mirror-img {
 }
 .approval-resolved.err { color: var(--status-error); }
 
+/* Folded card (1.3.43): a settled card shrinks to one line; click to expand. */
+.msg.approval.folded { cursor: pointer; opacity: 0.75; }
+.msg.approval.folded .bubble { padding-top: 6px; padding-bottom: 6px; }
+.msg.approval.folded .approval-label { display: none; }
+.msg.approval.folded .approval-cmd { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-height: 1.6em; margin-bottom: 4px; }
+.msg.approval.folded .msg-time { display: none; }
+.msg.approval.folded.expanded { opacity: 1; }
+.msg.approval.folded.expanded .approval-cmd { white-space: pre-wrap; overflow: visible; max-height: none; }
+.msg.approval.folded.expanded .msg-time { display: block; }
+
 /* Empty state — matches reference "The mirror is still" */
 #empty-state {
   flex: 1;
@@ -1679,7 +1689,7 @@ body.overlay-open #mirror-img {
 
 <script>
 /* ═══════════════════════════════════════════════════════════════════════
-   GALADRIEL EDGE WIDGET v1.3.34
+   GALADRIEL EDGE WIDGET v1.3.44
    ═══════════════════════════════════════════════════════════════════════ */
 
 /* ── iCUE property read (Corsair SDK contract) ─────────────────────────────
@@ -1844,6 +1854,15 @@ let sessionStart = Date.now();
 let lastReplyTime = null;
 let pollTimer    = null;
 let sending      = false;
+let currentTurn = null;   // in-flight turn: {id, receivedDone, doneSeenAt, recover} (v1.3.41)
+
+const unackedSeen = {};   // `${epoch}:${id}` -> {first, handled} (v1.3.42)
+const TRACE_MAX = 200;
+const traceBuf = [];
+function trace(ev, extra) {
+  traceBuf.push(Object.assign({ ts: Date.now(), ev: ev }, extra || {}));
+  if (traceBuf.length > TRACE_MAX) traceBuf.splice(0, traceBuf.length - TRACE_MAX);
+}
 let sendingStart = 0;
 let pendingUsrDiv = null;   // the optimistic bubble for the in-flight send
 let pendingText    = '';    // its text, for one-click retry
@@ -1951,6 +1970,7 @@ setInterval(() => {
   const ref = lastActivityAt || sendingStart;
   if (sending && ref && (Date.now() - ref > WATCHDOG_IDLE_MS)) {
     console.warn('[Edge] sending watchdog fired — resetting stuck state');
+    trace('watchdog', { id: currentTurn ? currentTurn.id : null });
     reconcileOrFail(pendingUsrDiv, pendingText, `no activity within ${WATCHDOG_IDLE_MS/1000}s`);
     sending = false; sendingStart = 0; lastActivityAt = 0;
     pendingUsrDiv = null; pendingText = '';
@@ -2238,6 +2258,70 @@ async function loadHistory() {
 }
 
 /* ── Send message (SSE streaming) ── */
+/* TURN RECOVERY (v1.3.41): the stream's first event names the turn id; every
+   poll carries edge_turns.done. If the Tower says our turn finished but no
+   'done' arrived within a short grace, the stream hung without closing:
+   cancel it and load the reply from history. */
+const TURN_RECOVERY_GRACE_MS = 8000;
+function shouldRecoverTurn(turn, edgeTurns, now) {
+  if (!turn || turn.id == null || turn.receivedDone) return false;
+  if (!edgeTurns || !Array.isArray(edgeTurns.done) || !edgeTurns.done.includes(turn.id)) return false;
+  if (!turn.doneSeenAt) { turn.doneSeenAt = now; return false; }
+  return now - turn.doneSeenAt >= TURN_RECOVERY_GRACE_MS;
+}
+
+/* ACKNOWLEDGED TURNS (v1.3.42): recovery must not depend on this webview's
+   memory. The Tower lists finished turns no widget has acknowledged; after a
+   grace, a visible idle widget reloads from history and acknowledges them.
+   A hidden webview never acts: it must not swallow a reply the panel never showed. */
+function dueUnackedTurns(edgeTurns, seen, now, hidden, inflightId) {
+  if (hidden || !edgeTurns || !Array.isArray(edgeTurns.unacked)) return [];
+  const epoch = edgeTurns.epoch || '';
+  const due = [];
+  for (const id of edgeTurns.unacked) {
+    if (inflightId != null && id === inflightId) continue;
+    const key = epoch + ':' + id;
+    if (!seen[key]) { seen[key] = { first: now, handled: false }; continue; }
+    if (seen[key].handled) continue;
+    if (now - seen[key].first >= TURN_RECOVERY_GRACE_MS) due.push(id);
+  }
+  return due;
+}
+
+async function ackTurn(id) {
+  try { await apiFetch(`/api/edge/turn/${id}/ack`, { method: 'POST' }); } catch (e) {}
+}
+
+async function reloadFromHistory() {
+  // v1.3.44: fetch FIRST; touch the panel only once the history has arrived.
+  let data;
+  try {
+    data = await apiFetch('/api/edge/history');
+  } catch (e) {
+    return false;
+  }
+  if (!data || !Array.isArray(data.messages)) return false;
+  $msgs.innerHTML = '';
+  renderedApprovals.clear();
+  data.messages.forEach(m => renderMsg(m.role, m.display_text || m.text, m.time || ''));
+  setStatus('online', 'TOWER ONLINE');
+  loaded = true;
+  return true;
+}
+
+async function flushTrace() {
+  if (!traceBuf.length || !CFG.token) return;
+  const events = traceBuf.splice(0, 100);
+  try {
+    await apiFetch('/api/edge/trace', { method: 'POST', body: JSON.stringify({ boot: EDGE_BOOT, version: WIDGET_VERSION, events: events }) });
+  } catch (e) {
+    traceBuf.unshift(...events);
+    if (traceBuf.length > TRACE_MAX) traceBuf.splice(TRACE_MAX);
+  }
+}
+setInterval(flushTrace, 30000);
+trace('boot');
+
 async function sendMessage() {
   const text = $input.value.trim();
   const hasAttachments = stagedImages.length > 0 || stagedFiles.length > 0;
@@ -2248,6 +2332,7 @@ async function sendMessage() {
   }
 
   sending = true; sendingStart = Date.now(); lastActivityAt = Date.now();
+  trace('send', { len: text.length });
   $input.disabled = true;
   $sendBtn.disabled = true;
   $input.value = '';
@@ -2272,6 +2357,9 @@ async function sendMessage() {
   // force-resets to let the user retry), so this turn must resolve its
   // OWN bubble, never whatever pendingUsrDiv happens to point to by then.
   const myUsrDiv = pendingUsrDiv;
+  const myTurn = { id: null, receivedDone: false, doneSeenAt: 0, recover: null };
+  currentTurn = myTurn;
+  let recovered = false;
   setStatus('sending', 'SENDING…');
   setThinking(true);
 
@@ -2313,6 +2401,7 @@ async function sendMessage() {
     const decoder = new TextDecoder();
     let   buf     = '';
     let   receivedDone = false;
+    myTurn.recover = () => { recovered = true; try { reader.cancel(); } catch (e) {} };
 
     while (true) {
       const { done, value } = await reader.read();
@@ -2332,7 +2421,9 @@ async function sendMessage() {
         try { evt = JSON.parse(line.slice(6)); } catch { continue; }
         lastActivityAt = Date.now();
 
-        if (evt.t === 'status') {
+        if (evt.t === 'turn') {
+          myTurn.id = evt.v; trace('turn', { id: evt.v });
+        } else if (evt.t === 'status') {
           ensureBubble();
           bubbleDiv.innerHTML = renderMarkdown((evt.display || '') + '\n\n', CFG.url);
         } else if (evt.t === 'progress') {
@@ -2371,6 +2462,7 @@ async function sendMessage() {
             const galMsgs = $msgs.querySelectorAll('.msg.gal .msg-time');
             appendCost(galMsgs[galMsgs.length - 1]);
           } else {
+            placeInThread(bubbleDiv.closest('.msg'));
             bubbleText = evt.display_v || evt.v;
             bubbleDiv.innerHTML = renderMarkdown(bubbleText, CFG.url);
             bubbleDiv.classList.remove('streaming-bubble');
@@ -2396,6 +2488,8 @@ async function sendMessage() {
           setThinking(false);
           setStatus('online', 'TOWER ONLINE');
           receivedDone = true;
+          myTurn.receivedDone = true;
+          trace('done', { id: myTurn.id }); if (myTurn.id != null) ackTurn(myTurn.id);
           resolveDiv(myUsrDiv);
           if (pendingUsrDiv === myUsrDiv) pendingUsrDiv = null;
           reader.cancel();
@@ -2418,13 +2512,22 @@ async function sendMessage() {
     // unexplained, forever. Treat a closed-without-done stream as a
     // failure, not a success.
     if (!receivedDone) {
-      setThinking(false);
-      renderError('Connection closed before a reply arrived.');
-      setStatus('offline', 'TOWER OFFLINE');
-      await reconcileOrFail(myUsrDiv, pendingText, 'stream closed without a reply');
+      if (recovered) {
+        trace('closed-without-done', { id: myTurn.id, recovered: recovered });
+        // The Tower finished this turn but the stream hung: fetch the reply quietly.
+        await reconcileOrFail(myUsrDiv, pendingText, 'stream hung; the turn finished on the Tower');
+        setThinking(false);
+        setStatus('online', 'TOWER ONLINE');
+      } else {
+        setThinking(false);
+        renderError('Connection closed before a reply arrived.');
+        setStatus('offline', 'TOWER OFFLINE');
+        await reconcileOrFail(myUsrDiv, pendingText, 'stream closed without a reply');
+      }
       if (pendingUsrDiv === myUsrDiv) pendingUsrDiv = null;
     }
   } catch (e) {
+    trace('stream-error', { msg: String(e && e.message || e).slice(0, 200) });
     setThinking(false);
     if (!receivedDone) {
       renderError((/^HTTP \d|Failed to fetch|NetworkError/.test(e.message) ? 'Could not reach the Tower: ' : 'The Tower refused this message: ') + e.message);
@@ -2434,6 +2537,7 @@ async function sendMessage() {
     }
   } finally {
     sending = false; sendingStart = 0; lastActivityAt = 0;
+    if (currentTurn === myTurn) currentTurn = null;
     $input.disabled = false;
     $sendBtn.disabled = false;
     $input.focus();
@@ -2657,6 +2761,25 @@ async function poll() {
       // pre-1.3.36 Tower: one top-level card, deduped by id
       syncApprovals([{ id: data.id, command: data.command }], []);
     }
+    if (data && shouldRecoverTurn(currentTurn, data.edge_turns, Date.now())) {
+      trace('recover', { id: currentTurn.id });
+      currentTurn.recover();
+    }
+    if (data && !sending) {
+      const inflight = (currentTurn && !currentTurn.receivedDone) ? currentTurn.id : null;
+      const due = dueUnackedTurns(data.edge_turns, unackedSeen, Date.now(), !panelVisible(), inflight);
+      if (due.length) {
+        const epoch = (data.edge_turns && data.edge_turns.epoch) || '';
+        trace('unacked-due', { ids: due.join(',') });
+        const reloaded = await reloadFromHistory();
+        if (reloaded) {
+          due.forEach(id => { unackedSeen[epoch + ':' + id].handled = true; });
+          due.forEach(id => ackTurn(id));
+        } else {
+          trace('reload-failed', { ids: due.join(',') });
+        }
+      }
+    }
     if (data && data.message) {
       if (data.id !== lastMsgId) {
         lastMsgId = data.id;
@@ -2730,6 +2853,7 @@ function settleApprovalCard(id, outcome) {
   const card = $msgs.querySelector(`.msg.approval.pending[data-approval-id="${id}"]`);
   if (!card) return;
   card.classList.remove('pending');
+  card.classList.add('folded');
   const actions = card.querySelector('.approval-actions');
   const err = (outcome === 'timed_out' || outcome === 'withdrawn') ? ' err' : '';
   if (actions) actions.innerHTML = `<span class="approval-resolved${err}">${APPROVAL_OUTCOME_TEXT[outcome] || escapeHtml(String(outcome))}</span>`;
@@ -2752,6 +2876,11 @@ function renderApproval(id, command) {
   const div = document.createElement('div');
   div.className = 'msg approval pending';
   div.setAttribute('data-approval-id', id);
+  div.onclick = (e) => {
+    if (!div.classList.contains('folded')) return;
+    if (e && e.target && e.target.closest && e.target.closest('button')) return;
+    div.classList.toggle('expanded');
+  };
   div.innerHTML = `
     <div class="msg-avatar">⚠</div>
     <div>
@@ -2788,7 +2917,7 @@ function restartPolling() {
   pollTimer = setInterval(poll, CFG.poll * 1000);
 }
 
-const WIDGET_VERSION = '1.3.36';
+const WIDGET_VERSION = '1.3.44';
 
 /* ── Input event wiring ── */
 $input.addEventListener('keydown', e => {
@@ -3065,6 +3194,13 @@ inspectPause.addEventListener('click', () => {
 });
 document.addEventListener('visibilitychange', () => {
   stopInspect(); if (!document.hidden) refreshInspect();
+});
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) poll();
+});
+document.addEventListener('visibilitychange', () => {
+  trace('visibility', { hidden: document.hidden });
+  if (document.hidden) flushTrace();
 });
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape' && inspectEl.style.display !== 'none') closeInspect();
