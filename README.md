@@ -1,4 +1,4 @@
-# Xeneon Edge Companion (Galadriel HUD)
+# Xeneon Edge Companion
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Latest Release](https://img.shields.io/github/v/release/avasol/xeneon-edge-companion?color=teal)](https://github.com/avasol/xeneon-edge-companion/releases)
@@ -45,7 +45,7 @@ The **Xeneon Edge Companion** turns the Corsair Xeneon ultrawide panel into a de
 ## Quick Start (iCUE Installation)
 
 ### 1. Download
-Grab the latest pre-compiled **`galadriel_edge_v*.icuewidget`** file from the [Releases](https://github.com/avasol/xeneon-edge-companion/releases) page.
+Grab the latest pre-compiled **`<skin>_edge_v*.icuewidget`** (for example `aedelgard_edge_v1.4.0.icuewidget`) file from the [Releases](https://github.com/avasol/xeneon-edge-companion/releases) page.
 
 ### 2. Import into Corsair iCUE
 1. Open **Corsair iCUE**.
@@ -134,10 +134,7 @@ Skins are described in `skins/SCHEMA.md`.
 
 ## Customization
 
-The widget is pure HTML5, CSS3, and modern vanilla JavaScript:
-- **Portrait Avatar**: Replace `resources/mirror.png` with your desired agent icon or scrying portrait.
-- **Theme Accents**: Modify CSS variables in `index.html` under `:root` (`--pri`, `--sec`, `--teal`, `--bg`) to align with your setup's color palette.
-- **Header Badges**: Customize `#topbar-era` and `#topbar-loc` in `index.html` to reflect your persona's setting or fictional realm.
+Don't edit `index.html` to change the look: make a skin. Copy `skins/aedelgard` to a folder of your own, change its colours, portrait, icon and words in `skin.json`, and build it with `python3 build.py --skin <your folder>`. The rules (and why a skin can't carry script) are in [`skins/SCHEMA.md`](skins/SCHEMA.md).
 
 ---
 
