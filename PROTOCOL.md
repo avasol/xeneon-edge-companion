@@ -216,8 +216,8 @@ A server MAY include an approval registry on **every** `GET /api/edge/poll` resp
 
 | Field | Type | Description |
 |---|---|---|
-| `approvals` | array | Pending approvals. Each entry carries `id` and the `tool`/`summary` fields the widget reads to render the card. |
-| `approvals_closed` | object | Map of `{ id: outcome }` for cards that have since been settled. |
+| `approvals` | array | Pending approvals. Each entry is `{ "id": ..., "command": ... }`; the widget renders the command on the card. |
+| `approvals_closed` | array | Settled cards as `[{ "id": ..., "outcome": ... }]`, kept for a few minutes. Outcomes: `approved`, `denied`, `timed_out`, `answered_elsewhere`, `withdrawn`. |
 
 A server MAY also accept `POST /api/edge/approval/{id}/seen` (responds `204 No Content`) as a visibility receipt, sent once by a visible, non-preview panel. Servers that only send the `approval` SSE event keep working unchanged.
 
