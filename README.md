@@ -124,10 +124,11 @@ git clone https://github.com/avasol/xeneon-edge-companion.git
 cd xeneon-edge-companion
 
 # Build the .icuewidget package
-bash build.sh
+python3 build.py --skin skins/aedelgard
 ```
 
-The output artifact will be placed in `./dist/galadriel_edge_v<version>.icuewidget`.
+The output artifact will be placed in `./dist/<id>_edge_v<version>.icuewidget`.
+Skins are described in `skins/SCHEMA.md`.
 
 ---
 
