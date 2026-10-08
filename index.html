@@ -12,7 +12,7 @@
 <script type="application/json" id="x-icue-groups">
 [{"title": "'Connection'", "properties": ["towerUrl", "edgeToken", "pollSecs"]}]
 </script>
-<title>'Galadriel — Lady of Light'</title>
+<title>Edge</title>
 
 <style>
 /* ═══════════════════════════════════════════════════════════════
@@ -60,6 +60,12 @@
   --status-offline: #c06060;
   --status-error:   #c06060;
 
+  /* ── Skin defaults ── */
+  --bg-deep:     #050609;
+  --shade-rgb:   4,4,8;
+  --ok:          #4fd1c5;
+  --ok-rgb:      79,209,197;
+
   /* ── Layout ── */
   --radius:      8px;
   --w-left:      460px;
@@ -73,7 +79,7 @@ html, body {
   width: 100vw; height: 100vh;
   overflow: hidden;
   background: var(--bg);
-  font-family: 'Courier New', 'Segoe UI', monospace;
+  font-family: var(--font-body, 'Courier New', 'Segoe UI', monospace);
   font-size: 26px;
   color: var(--text);
   user-select: none;
@@ -99,16 +105,16 @@ body::after {
   content: '';
   position: fixed; inset: 0;
   background-image:
-    radial-gradient(1px 1px at  8% 15%, rgba(184,204,224,0.35) 0%, transparent 100%),
-    radial-gradient(1px 1px at 22% 72%, rgba(184,204,224,0.20) 0%, transparent 100%),
-    radial-gradient(1px 1px at 37% 31%, rgba(221,224,236,0.25) 0%, transparent 100%),
-    radial-gradient(1px 1px at 51% 85%, rgba(184,204,224,0.15) 0%, transparent 100%),
-    radial-gradient(1px 1px at 65% 48%, rgba(184,204,224,0.22) 0%, transparent 100%),
-    radial-gradient(1px 1px at 78% 18%, rgba(221,224,236,0.18) 0%, transparent 100%),
-    radial-gradient(1px 1px at 91% 65%, rgba(184,204,224,0.28) 0%, transparent 100%),
-    radial-gradient(1px 1px at 14% 90%, rgba(221,224,236,0.15) 0%, transparent 100%),
-    radial-gradient(1px 1px at 43% 55%, rgba(184,204,224,0.12) 0%, transparent 100%),
-    radial-gradient(1px 1px at 88% 38%, rgba(221,224,236,0.20) 0%, transparent 100%);
+    radial-gradient(1px 1px at  8% 15%, rgba(var(--pri-rgb),0.35) 0%, transparent 100%),
+    radial-gradient(1px 1px at 22% 72%, rgba(var(--pri-rgb),0.20) 0%, transparent 100%),
+    radial-gradient(1px 1px at 37% 31%, rgba(var(--sec-rgb),0.25) 0%, transparent 100%),
+    radial-gradient(1px 1px at 51% 85%, rgba(var(--pri-rgb),0.15) 0%, transparent 100%),
+    radial-gradient(1px 1px at 65% 48%, rgba(var(--pri-rgb),0.22) 0%, transparent 100%),
+    radial-gradient(1px 1px at 78% 18%, rgba(var(--sec-rgb),0.18) 0%, transparent 100%),
+    radial-gradient(1px 1px at 91% 65%, rgba(var(--pri-rgb),0.28) 0%, transparent 100%),
+    radial-gradient(1px 1px at 14% 90%, rgba(var(--sec-rgb),0.15) 0%, transparent 100%),
+    radial-gradient(1px 1px at 43% 55%, rgba(var(--pri-rgb),0.12) 0%, transparent 100%),
+    radial-gradient(1px 1px at 88% 38%, rgba(var(--sec-rgb),0.20) 0%, transparent 100%);
   pointer-events: none; z-index: 0;
 }
 
@@ -124,7 +130,7 @@ body::after {
   border-radius: 4px;
   overflow: hidden;
   background: var(--bg);
-  box-shadow: 0 0 60px rgba(184,204,224,0.06), inset 0 0 100px rgba(0,0,0,0.4);
+  box-shadow: 0 0 60px rgba(var(--pri-rgb),0.06), inset 0 0 100px rgba(0,0,0,0.4);
 }
 
 /* Outer corner brackets — like the reference image */
@@ -196,7 +202,7 @@ body::after {
   flex-shrink: 0;
   transition: background 0.4s, box-shadow 0.4s;
 }
-#status-dot.online  { background: var(--pri); box-shadow: 0 0 8px var(--pri), 0 0 20px rgba(184,204,224,0.4); }
+#status-dot.online  { background: var(--pri); box-shadow: 0 0 8px var(--pri), 0 0 20px rgba(var(--pri-rgb),0.4); }
 #status-dot.offline { background: var(--status-offline); box-shadow: 0 0 6px var(--status-offline); }
 #status-dot.sending { background: var(--sec); box-shadow: 0 0 8px var(--sec); animation: pulse-sec 0.8s infinite; }
 
@@ -249,7 +255,7 @@ body::after {
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   LEFT PANEL — GALADRIEL CARD
+   LEFT PANEL — IDENTITY CARD
    (matches the "portrait card" from the reference)
    ═══════════════════════════════════════════════════════════════ */
 #left-panel {
@@ -260,7 +266,7 @@ body::after {
   gap: 22px;
   border-right: 1px solid var(--border);
   background:
-    radial-gradient(ellipse 80% 70% at 50% 40%, rgba(221,224,236,0.06) 0%, transparent 70%),
+    radial-gradient(ellipse 80% 70% at 50% 40%, rgba(var(--sec-rgb),0.06) 0%, transparent 70%),
     var(--panel);
   /* padding-top carries the chat-header's height so this column's centered
      content (portrait+ident) lands on the same vertical center as the chat
@@ -297,6 +303,7 @@ body::after {
   opacity: 0.25;
   font-size: 18px;
   color: var(--pri-dim);
+  white-space: pre-line;
   z-index: 2;
 }
 
@@ -340,7 +347,7 @@ body::after {
 #mirror-ring-outer {
   position: absolute; inset: -11px;
   border-radius: 50%;
-  border: 1px solid rgba(184,204,224,0.30);
+  border: 1px solid rgba(var(--pri-rgb),0.30);
   /* STILL WATER: rings rest at idle; they turn only while she thinks.
      Two infinite spins meant the widget was never still — a per-frame
      composite for hours, for decoration. */
@@ -360,7 +367,7 @@ body::after {
 #mirror-ring-gold {
   position: absolute; inset: -19px;
   border-radius: 50%;
-  border: 1px solid rgba(221,224,236,0.20);
+  border: 1px solid rgba(var(--sec-rgb),0.20);
   will-change: transform;
 }
 #mirror-wrap.thinking #mirror-ring-gold { animation: spin-rev-slow 48s linear infinite; }
@@ -377,7 +384,7 @@ body::after {
 #mirror-ring-inner {
   position: absolute; inset: 5px;
   border-radius: 50%;
-  border: 1px solid rgba(221,224,236,0.25);
+  border: 1px solid rgba(var(--sec-rgb),0.25);
   pointer-events: none;
 }
 
@@ -405,7 +412,7 @@ body::after {
 #mirror-pulse2 {
   position: absolute; inset: -22px;
   border-radius: 50%;
-  border: 1px solid rgba(184,204,224,0.4);
+  border: 1px solid rgba(var(--pri-rgb),0.4);
   opacity: 0;
 }
 #mirror-pulse2.active {
@@ -438,7 +445,7 @@ body::after {
   letter-spacing: 0.30em;
   color: var(--sec-bright);
   text-transform: uppercase;
-  text-shadow: 0 0 20px rgba(221,224,236,0.5), 0 0 40px rgba(221,224,236,0.2);
+  text-shadow: 0 0 20px rgba(var(--sec-rgb),0.5), 0 0 40px rgba(var(--sec-rgb),0.2);
 }
 #ident .title-line {
   font-size: 15px;
@@ -473,8 +480,8 @@ body::after {
   justify-content: space-between;
   align-items: center;
   padding: 5px 14px;
-  background: rgba(184,204,224,0.03);
-  border: 1px solid rgba(184,204,224,0.10);
+  background: rgba(var(--pri-rgb),0.03);
+  border: 1px solid rgba(var(--pri-rgb),0.10);
   border-radius: 3px;
   font-size: 16px;
   color: var(--text-dim);
@@ -587,7 +594,7 @@ body::after {
 #new-btn {
   margin-left: auto;
   background: none;
-  border: 1px solid rgba(184,204,224,0.20);
+  border: 1px solid rgba(var(--pri-rgb),0.20);
   color: var(--text-dim);
   padding: 5px 18px;
   border-radius: 3px;
@@ -601,7 +608,7 @@ body::after {
 #new-btn:hover {
   border-color: var(--pri);
   color: var(--pri);
-  box-shadow: 0 0 10px rgba(184,204,224,0.15);
+  box-shadow: 0 0 10px rgba(var(--pri-rgb),0.15);
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -647,7 +654,7 @@ body::after {
   align-items: center;
   gap: 4px;
   background: none;
-  border: 1px solid rgba(184,204,224,0.20);
+  border: 1px solid rgba(var(--pri-rgb),0.20);
   color: var(--text-dim);
   padding: 14px 10px;
   border-radius: 4px;
@@ -662,7 +669,7 @@ body::after {
 .special-cmd-btn:hover {
   border-color: var(--pri);
   color: var(--pri);
-  box-shadow: 0 0 10px rgba(184,204,224,0.15);
+  box-shadow: 0 0 10px rgba(var(--pri-rgb),0.15);
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -674,20 +681,20 @@ body::after {
 #link-sheet {
   position: absolute; inset: 0; z-index: 120;
   display: none; align-items: center; justify-content: center;
-  background: rgba(4,4,8,0.88);
+  background: rgba(var(--shade-rgb),0.88);
 }
 #link-sheet.open { display: flex; }
 #link-sheet .sheet {
   width: min(88%, 640px);
   background: var(--panel);
-  border: 1px solid rgba(184,204,224,0.28);
+  border: 1px solid rgba(var(--pri-rgb),0.28);
   box-shadow: 0 0 28px var(--pri-glow), 0 0 2px var(--pri);
   border-radius: 4px;
   padding: 18px 22px 16px;
 }
 #link-sheet .sheet-title {
   font-size: 13px; letter-spacing: 0.22em; text-transform: uppercase;
-  color: var(--sec-bright); text-shadow: 0 0 10px rgba(221,224,236,0.35);
+  color: var(--sec-bright); text-shadow: 0 0 10px rgba(var(--sec-rgb),0.35);
   margin-bottom: 12px;
 }
 #link-sheet .sheet-body {
@@ -699,18 +706,18 @@ body::after {
 }
 #link-sheet .sheet-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 14px; }
 #link-sheet .sheet-btn {
-  background: none; border: 1px solid rgba(184,204,224,0.20); color: var(--text-dim);
+  background: none; border: 1px solid rgba(var(--pri-rgb),0.20); color: var(--text-dim);
   padding: 5px 16px; border-radius: 3px; font-size: 13px; letter-spacing: 0.12em;
   text-transform: uppercase; cursor: pointer; font-family: inherit;
 }
 #link-sheet .sheet-btn:hover { border-color: var(--pri); color: var(--pri); }
-#link-sheet .sheet-btn.primary { border-color: rgba(184,204,224,0.45); color: var(--sec-bright); }
+#link-sheet .sheet-btn.primary { border-color: rgba(var(--pri-rgb),0.45); color: var(--sec-bright); }
 
 #media-overlay {
   position: absolute; inset: 0;
   z-index: 100;
   display: none;
-  background: rgba(4,4,8,0.96);
+  background: rgba(var(--shade-rgb),0.96);
   /* no backdrop-filter (2026-08-30): forced a continuous per-frame
      recomposite against the mirror's always-spinning rings underneath —
      flicker in the sandboxed Widgets webview for near-zero visible gain
@@ -741,7 +748,7 @@ body.overlay-open #mirror-img {
   letter-spacing: 0.18em;
   text-transform: uppercase;
   color: var(--sec-bright);
-  text-shadow: 0 0 12px rgba(221,224,236,0.4);
+  text-shadow: 0 0 12px rgba(var(--sec-rgb),0.4);
 }
 #media-overlay-header .count {
   color: var(--text-dim);
@@ -750,7 +757,7 @@ body.overlay-open #mirror-img {
 #media-close-btn {
   margin-left: auto;
   background: none;
-  border: 1px solid rgba(184,204,224,0.20);
+  border: 1px solid rgba(var(--pri-rgb),0.20);
   color: var(--text-dim);
   padding: 5px 18px;
   border-radius: 3px;
@@ -788,7 +795,7 @@ body.overlay-open #mirror-img {
   font-size: 12px;
 }
 .media-tag {
-  border: 1px solid rgba(184,204,224,0.25);
+  border: 1px solid rgba(var(--pri-rgb),0.25);
   color: var(--pri-mid);
   border-radius: 3px;
   padding: 2px 8px;
@@ -796,7 +803,7 @@ body.overlay-open #mirror-img {
   text-transform: uppercase;
   white-space: nowrap;
 }
-.media-tag.type-image { color: var(--sec); border-color: rgba(221,224,236,0.3); }
+.media-tag.type-image { color: var(--sec); border-color: rgba(var(--sec-rgb),0.3); }
 .media-tag.type-audio { color: var(--pri); }
 .media-tag.missing { color: var(--status-offline); border-color: var(--status-offline); }
 .media-item .media-prompt {
@@ -869,7 +876,7 @@ body.overlay-open #mirror-img {
   letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--sec-bright);
-  text-shadow: 0 0 10px rgba(221,224,236,0.3);
+  text-shadow: 0 0 10px rgba(var(--sec-rgb),0.3);
 }
 #inspect-state {
   flex: 1;
@@ -883,13 +890,13 @@ body.overlay-open #mirror-img {
   min-height: 0;
   user-select: text;
   -webkit-user-select: text;
-  background: #050609;
-  border: 1px solid rgba(184,204,224,0.12);
+  background: var(--bg-deep);
+  border: 1px solid rgba(var(--pri-rgb),0.12);
   border-radius: 6px;
   padding: 12px 16px;
 }
 #inspect-content::-webkit-scrollbar { width: 5px; }
-#inspect-content::-webkit-scrollbar-thumb { background: rgba(184,204,224,0.2); border-radius: 3px; }
+#inspect-content::-webkit-scrollbar-thumb { background: rgba(var(--pri-rgb),0.2); border-radius: 3px; }
 
 #inspect-content.status-view {
   font-family: inherit;
@@ -908,21 +915,21 @@ body.overlay-open #mirror-img {
   border-radius: 4px;
   border: 1px solid var(--border);
   overflow-x: auto;
-  font-family: 'Consolas', monospace;
+  font-family: var(--font-mono, 'Consolas', monospace);
   font-size: 18px;
 }
 #inspect-content.status-view code {
-  font-family: 'Consolas', monospace;
+  font-family: var(--font-mono, 'Consolas', monospace);
   color: var(--pri);
 }
 
 #inspect-content.logs-view {
-  font-family: 'Consolas', 'Cascadia Code', 'JetBrains Mono', monospace;
+  font-family: var(--font-mono, 'Consolas', 'Cascadia Code', 'JetBrains Mono', monospace);
   font-size: 18px;
   line-height: 1.45;
   white-space: normal;
-  background: #050609;
-  border: 1px solid rgba(184,204,224,0.12);
+  background: var(--bg-deep);
+  border: 1px solid rgba(var(--pri-rgb),0.12);
   border-radius: 6px;
   padding: 12px 14px;
 }
@@ -955,7 +962,7 @@ body.overlay-open #mirror-img {
   flex-shrink: 0;
   font-weight: 500;
 }
-.log-tag.tag-galadriel {
+.log-tag.tag-harness {
   color: #d4af37;
   font-weight: 600;
 }
@@ -1037,18 +1044,18 @@ body.overlay-open #mirror-img {
   margin-top: 2px;
 }
 .msg.gal .msg-avatar {
-  background: radial-gradient(circle, rgba(184,204,224,0.15) 0%, transparent 70%);
-  border-color: rgba(184,204,224,0.30);
+  background: radial-gradient(circle, rgba(var(--pri-rgb),0.15) 0%, transparent 70%);
+  border-color: rgba(var(--pri-rgb),0.30);
   color: var(--pri);
-  box-shadow: 0 0 10px rgba(184,204,224,0.10);
+  box-shadow: 0 0 10px rgba(var(--pri-rgb),0.10);
 }
 .msg.usr .msg-avatar {
-  background: radial-gradient(circle, rgba(221,224,236,0.12) 0%, transparent 70%);
-  border-color: rgba(221,224,236,0.25);
+  background: radial-gradient(circle, rgba(var(--sec-rgb),0.12) 0%, transparent 70%);
+  border-color: rgba(var(--sec-rgb),0.25);
   color: var(--sec);
 }
 
-/* Bubble — gold-bordered for Galadriel, teal for user (reference reversed) */
+/* Bubble — gold-bordered for the mind, teal for user (reference reversed) */
 .bubble {
   padding: 14px 22px;
   border-radius: 6px;
@@ -1057,24 +1064,24 @@ body.overlay-open #mirror-img {
   position: relative;
   max-width: 100%;
   word-break: break-word;
-  font-family: 'Segoe UI', system-ui, sans-serif;
+  font-family: var(--font-ui, 'Segoe UI', system-ui, sans-serif);
 }
 /* I-006 (v1.3.21): body sets user-select:none for a chrome-like feel, which
-   also made every reply unmarkable — Lord Isildur had to ask for a URL on
+   also made every reply unmarkable — the owner had to ask for a URL on
    Discord instead. Text inside bubbles is selectable again; chrome stays
    unselectable. */
 .bubble, .bubble * { user-select: text; -webkit-user-select: text; cursor: text; }
 .bubble a, .bubble button, .bubble .copy-btn { cursor: pointer; }
-.bubble ::selection { background: rgba(184,204,224,0.35); color: #fff; }
+.bubble ::selection { background: rgba(var(--pri-rgb),0.35); color: #fff; }
 .msg.gal .bubble {
-  background: rgba(221,224,236,0.05);
-  border: 1px solid rgba(221,224,236,0.22);
+  background: rgba(var(--sec-rgb),0.05);
+  border: 1px solid rgba(var(--sec-rgb),0.22);
   color: var(--text);
   border-top-left-radius: 2px;
 }
 .msg.usr .bubble {
-  background: rgba(184,204,224,0.05);
-  border: 1px solid rgba(184,204,224,0.20);
+  background: rgba(var(--pri-rgb),0.05);
+  border: 1px solid rgba(var(--pri-rgb),0.20);
   color: var(--text);
   border-top-right-radius: 2px;
 }
@@ -1121,7 +1128,7 @@ body.overlay-open #mirror-img {
 }
 .msg-retry:hover { background: rgba(224,82,82,0.10); }
 
-/* ── Approval card (red-tier tool call awaiting Lord Isildur's Yes/No) ── */
+/* ── Approval card (red-tier tool call awaiting the owner's Yes/No) ── */
 .msg.approval .bubble {
   background: rgba(224,180,82,0.07);
   border-color: rgba(224,180,82,0.30);
@@ -1308,15 +1315,15 @@ body.overlay-open #mirror-img {
 
 #input-wrap {
   flex: 1;
-  border: 1px solid rgba(184,204,224,0.18);
+  border: 1px solid rgba(var(--pri-rgb),0.18);
   border-radius: 5px;
-  background: rgba(184,204,224,0.03);
+  background: rgba(var(--pri-rgb),0.03);
   padding: 2px 4px;
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 #input-wrap:focus-within {
-  border-color: rgba(184,204,224,0.45);
-  box-shadow: 0 0 16px rgba(184,204,224,0.08);
+  border-color: rgba(var(--pri-rgb),0.45);
+  box-shadow: 0 0 16px rgba(var(--pri-rgb),0.08);
 }
 
 #msg-input {
@@ -1328,7 +1335,7 @@ body.overlay-open #mirror-img {
   font-size: 25px;
   line-height: 1.4;
   padding: 16px 18px;
-  font-family: 'Segoe UI', system-ui, sans-serif;
+  font-family: var(--font-ui, 'Segoe UI', system-ui, sans-serif);
   resize: none;
   max-height: 110px;
   overflow-y: auto;
@@ -1341,7 +1348,7 @@ body.overlay-open #mirror-img {
   width: 88px; height: 88px;
   flex-shrink: 0;
   background: none;
-  border: 1px solid rgba(184,204,224,0.28);
+  border: 1px solid rgba(var(--pri-rgb),0.28);
   border-radius: 50%;
   cursor: pointer;
   display: flex;
@@ -1355,11 +1362,11 @@ body.overlay-open #mirror-img {
   content: '';
   position: absolute; inset: 0;
   border-radius: 50%;
-  background: radial-gradient(circle at 38% 32%, rgba(184,204,224,0.18) 0%, transparent 65%);
+  background: radial-gradient(circle at 38% 32%, rgba(var(--pri-rgb),0.18) 0%, transparent 65%);
 }
 #send-btn:hover:not(:disabled) {
   border-color: var(--pri);
-  box-shadow: 0 0 20px rgba(184,204,224,0.30), 0 0 40px rgba(184,204,224,0.10);
+  box-shadow: 0 0 20px rgba(var(--pri-rgb),0.30), 0 0 40px rgba(var(--pri-rgb),0.10);
 }
 #send-btn:active:not(:disabled) { transform: scale(0.93); }
 #send-btn:disabled { opacity: 0.25; cursor: not-allowed; }
@@ -1382,7 +1389,7 @@ body.overlay-open #mirror-img {
 /* ── Markdown in bubbles ── */
 .bubble h1,.bubble h2,.bubble h3,.bubble h4,.bubble h5,.bubble h6{margin:10px 0 6px;letter-spacing:.05em}
 .bubble h1{font-size:28px}.bubble h2{font-size:24px}.bubble h3{font-size:21px}.bubble h4{font-size:18px}.bubble h5{font-size:16px}.bubble h6{font-size:14px;opacity:.85}
-.bubble blockquote blockquote{border-left-color:var(--accent,#4fd1c5);opacity:.85;margin:6px 0}
+.bubble blockquote blockquote{border-left-color:var(--accent,var(--ok));opacity:.85;margin:6px 0}
 .bubble p{margin:0 0 8px}
 .bubble ul,.bubble ol{margin:6px 0 6px 24px}
 .bubble li{margin:3px 0}
@@ -1390,10 +1397,10 @@ body.overlay-open #mirror-img {
 .code-wrap pre{margin:0;padding-right:52px}
 .code-copy-btn{position:absolute;top:6px;right:6px;background:rgba(255,255,255,.08);border:1px solid var(--border);border-radius:4px;color:var(--text-dim);font-size:13px;padding:3px 8px;cursor:pointer;transition:all .15s;line-height:1;z-index:2}
 .code-copy-btn:hover{background:rgba(255,255,255,.18);color:var(--text)}
-.code-copy-btn.copied{color:var(--accent,#4fd1c5);border-color:var(--accent,#4fd1c5)}
+.code-copy-btn.copied{color:var(--accent,var(--ok));border-color:var(--accent,var(--ok))}
 .bubble code.inline-code{cursor:pointer;transition:background .15s, border-color .15s;border:1px solid transparent}
 .bubble code.inline-code:hover{background:rgba(255,255,255,.15);border-color:var(--border)}
-.bubble code.inline-code.copied{background:rgba(79,209,197,.2);border-color:var(--accent,#4fd1c5);color:#fff}
+.bubble code.inline-code.copied{background:rgba(var(--ok-rgb),.2);border-color:var(--accent,var(--ok));color:#fff}
 .bubble pre{background:rgba(0,0,0,.4);border:1px solid var(--border);border-radius:5px;
             padding:10px 16px;overflow-x:auto;margin:8px 0;font-size:20px;white-space:pre-wrap}
 .bubble code{background:rgba(255,255,255,.06);border-radius:3px;padding:1px 6px;font-size:22px}
@@ -1409,7 +1416,7 @@ body.overlay-open #mirror-img {
 .bubble hr{border:none;border-top:1px solid var(--border);margin:10px 0}
 .bubble a{text-decoration:underline;cursor:pointer}
 
-/* ── Copy button (hover on Galadriel messages) ── */
+/* ── Copy button (hover on the mind's messages) ── */
 .btn-copy {
   background: none; border: none; cursor: pointer;
   font-size: 11px; color: var(--text-dim);
@@ -1475,6 +1482,7 @@ body.overlay-open #mirror-img {
                   border:none;cursor:pointer;font-size:14px;line-height:1;padding:1px 4px;border-radius:3px}
 .response-status{display:inline-block;font-size:16px;line-height:1.6;color:#cbb88e;background:rgba(232,184,120,.08);border:1px solid rgba(232,184,120,.25);border-radius:8px;padding:8px 14px;margin:0 0 14px;overflow-wrap:anywhere;font-family:system-ui,sans-serif}.response-status strong{font-weight:600}.response-status.pending{opacity:0.85;border-style:dashed;color:#a0b8cc;border-color:rgba(160,184,204,0.35);background:rgba(160,184,204,0.06)}
 </style>
+<style id="skin-palette"></style>
 </head>
 
 <body>
@@ -1493,20 +1501,20 @@ body.overlay-open #mirror-img {
 
     <span class="sep"></span>
 
-    <!-- Center — "AI COMMUNICATIONS TERMINAL" with leaf glyphs -->
+    <!-- Center — "MIND TERMINAL" with leaf glyphs -->
     <div id="topbar-center">
-      <span class="leaf">✦</span>
-      <span style="letter-spacing:0.22em;">AI COMMUNICATIONS TERMINAL</span>
-      <span class="leaf">✦</span>
+      <span class="leaf" data-skin="rune">✦</span>
+      <span style="letter-spacing:0.22em;" data-skin="terminal_label">MIND TERMINAL</span>
+      <span class="leaf" data-skin="rune">✦</span>
     </div>
 
     <span class="sep"></span>
 
     <!-- Right cluster -->
     <div id="topbar-right">
-      <span id="topbar-era">T.A. 3021</span>
+      <span id="topbar-era" data-skin="era"></span>
       <span style="opacity:0.25">·</span>
-      <span id="topbar-loc">LÓRIEN, TOWER OF AMON SÛL</span>
+      <span id="topbar-loc" data-skin="location">LOCAL</span>
       <span style="opacity:0.25">|</span>
       <span id="topbar-time">--:--:--</span>
     </div>
@@ -1515,15 +1523,19 @@ body.overlay-open #mirror-img {
   <!-- ═══════ MAIN ROW ═══════ -->
   <div id="main">
 
-    <!-- ── LEFT PANEL: GALADRIEL CARD ── -->
+    <!-- ── LEFT PANEL: IDENTITY CARD ── -->
     <div id="left-panel">
 
       <!-- Decorative glyph column (left edge, like reference) -->
-      <div class="left-glyph">✦<br>᛭<br>✦<br>᛭<br>✦</div>
+      <div class="left-glyph" data-skin="side_glyphs">✦
+᛭
+✦
+᛭
+✦</div>
 
       <!-- THE MIRROR — pulsing portrait -->
       <div id="mirror-wrap">
-        <img id="mirror-img" src="resources/mirror.png" alt="Galadriel and the Mirror of Lothlórien">
+        <img id="mirror-img" src="" alt="">
         <div id="mirror-ring-outer"></div>
         <div id="mirror-ring-gold"></div>
         <div id="mirror-ring-inner"></div>
@@ -1534,8 +1546,8 @@ body.overlay-open #mirror-img {
 
       <!-- Identity -->
       <div id="ident">
-        <div class="name">GALADRIEL</div>
-        <div class="title-line">LADY OF LIGHT</div>
+        <div class="name" data-skin="name">EDGE</div>
+        <div class="title-line" data-skin="title_line">YOUR MIND</div>
       </div>
     </div>
 
@@ -1543,18 +1555,18 @@ body.overlay-open #mirror-img {
     <div id="chat-panel">
       <div id="chat-header">
         <span class="lock">🔒</span>
-        <span>SECURE CHANNEL:</span>
+        <span data-skin="channel_label">CHANNEL:</span>
         <span class="ch-sep"> ─── </span>
-        <span class="ch-name">ISILDUR</span>
+        <span class="ch-name" data-skin="channel_name">OWNER</span>
         <span class="ch-sep"> ─── </span>
-        <button id="new-btn">NEW SESSION</button>
+        <button id="new-btn" data-skin="new_session">NEW SESSION</button>
       </div>
 
       <div id="messages">
         <div id="empty-state">
-          <div class="rune">✦</div>
-          <span>The mirror is still</span>
-          <span>Speak to awaken the light</span>
+          <div class="rune" data-skin="rune">✦</div>
+          <span data-skin="idle_title">Nothing here yet</span>
+          <span data-skin="idle_text">Write to begin</span>
         </div>
       </div>
     </div>
@@ -1578,7 +1590,7 @@ body.overlay-open #mirror-img {
 
     <!-- Left: session stats (moved down from the left panel to reclaim
          the space the idle waveform display used to occupy) + a slim
-         ambient waveform accent that still pulses while Galadriel thinks -->
+         ambient waveform accent that still pulses while the mind thinks -->
     <div id="footer-left">
       <div id="stats">
         <div class="stat-row">
@@ -1615,7 +1627,7 @@ body.overlay-open #mirror-img {
       <label id="doc-attach-btn" title="Attach file (PDF/text)">📎<input type="file" id="doc-file-input" accept=".pdf,.txt,.md,.json,application/pdf,text/plain,text/markdown,application/json" multiple style="display:none"></label>
       <div id="input-wrap">
         <textarea id="msg-input"
-          placeholder="Speak to the Lady…"
+          placeholder="Write to your mind…"
           rows="1"
           autocomplete="off"
           spellcheck="false"></textarea>
@@ -1628,14 +1640,14 @@ body.overlay-open #mirror-img {
         <svg width="48" height="48" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
           <!-- Outer crystal facets -->
           <polygon points="16,3 27,13 16,29 5,13"
-            fill="rgba(184,204,224,0.10)"
+            fill="rgba(var(--pri-rgb),0.10)"
             stroke="var(--pri)"
             stroke-width="1.0"
             stroke-linejoin="round"/>
           <!-- Upper bright face -->
           <polygon points="16,3 27,13 16,17 5,13"
-            fill="rgba(184,204,224,0.22)"
-            stroke="rgba(184,204,224,0.55)"
+            fill="rgba(var(--pri-rgb),0.22)"
+            stroke="rgba(var(--pri-rgb),0.55)"
             stroke-width="0.7"/>
           <!-- Inner highlight -->
           <polygon points="16,3 22,11 16,14 10,11"
@@ -1643,7 +1655,7 @@ body.overlay-open #mirror-img {
             stroke="rgba(200,240,230,0.35)"
             stroke-width="0.4"/>
           <!-- Equator line -->
-          <line x1="5" y1="13" x2="27" y2="13" stroke="rgba(184,204,224,0.35)" stroke-width="0.6"/>
+          <line x1="5" y1="13" x2="27" y2="13" stroke="rgba(var(--pri-rgb),0.35)" stroke-width="0.6"/>
           <!-- Vertical axis line -->
           <line x1="16" y1="3" x2="16" y2="17" stroke="rgba(255,255,255,0.15)" stroke-width="0.4"/>
           <!-- Teal glow dot at tip -->
@@ -1687,10 +1699,24 @@ body.overlay-open #mirror-img {
 
 </div><!-- /#root -->
 
+<script id="skin-data" type="application/json">{}</script>
 <script>
 /* ═══════════════════════════════════════════════════════════════════════
-   GALADRIEL EDGE WIDGET v1.3.44
+   EDGE WIDGET v1.4.0
    ═══════════════════════════════════════════════════════════════════════ */
+
+const DEFAULT_SKIN_STRINGS = { title: 'Edge', name: 'EDGE', title_line: 'YOUR MIND', terminal_label: 'MIND TERMINAL', era: '', location: 'LOCAL', channel_label: 'CHANNEL:', channel_name: 'OWNER', new_session: 'NEW SESSION', idle_title: 'Nothing here yet', idle_text: 'Write to begin', input_placeholder: 'Write to your mind…', portrait_alt: '', status_title: '◈ Status', logs_title: '≋ Logs', logs_follow: 'Following the log', rune: '✦', assistant_glyph: '✦', user_glyph: '◈', side_glyphs: '✦᛭✦᛭✦' };
+let SKIN = { strings: {}, portrait: null }; try { SKIN = Object.assign(SKIN, JSON.parse(document.getElementById('skin-data').textContent || '{}')); } catch (e) {}
+function skinStr(k) { const s = SKIN.strings || {}; return (typeof s[k] === 'string') ? s[k] : (DEFAULT_SKIN_STRINGS[k] || ''); }
+function applySkin(skin) {
+  const s = (skin && skin.strings) || {};
+  document.querySelectorAll('[data-skin]').forEach(el => { const k = el.dataset.skin; if (typeof s[k] === 'string') el.textContent = (k === 'side_glyphs') ? Array.from(s[k]).join('\n') : s[k]; });
+  const input = document.getElementById('msg-input'); if (input && typeof s.input_placeholder === 'string') input.placeholder = s.input_placeholder;
+  if (typeof s.title === 'string') document.title = s.title;
+  const img = document.getElementById('mirror-img');
+  if (img) { if (skin && skin.portrait) { img.src = skin.portrait; } else { img.style.display = 'none'; } if (typeof s.portrait_alt === 'string') img.alt = s.portrait_alt; }
+}
+applySkin(SKIN);
 
 /* ── iCUE property read (Corsair SDK contract) ─────────────────────────────
    iCUE injects each configured property's value into the widget's global
@@ -2066,7 +2092,7 @@ function renderMsg(role, text, time) {
   const timeStr = time || new Date().toTimeString().slice(0,8);
 
   div.innerHTML = `
-    <div class="msg-avatar">${isGal ? '✦' : '◈'}</div>
+    <div class="msg-avatar">${isGal ? escapeHtml(skinStr('assistant_glyph')) : escapeHtml(skinStr('user_glyph'))}</div>
     <div>
       <div class="bubble">${isGal ? renderMarkdown(text, CFG.url) : escapeHtml(text)}</div>
       <div class="msg-time">${timeStr}${isGal ? ' <button class="btn-copy" title="Copy" onclick="copyMsg(this)">\u2398 copy</button>' : ''}</div>
@@ -2076,7 +2102,7 @@ function renderMsg(role, text, time) {
 
   msgCount++;
   $statMsgs.textContent = msgCount;
-  // Only a real Galadriel reply counts as "last reply" — echoing the
+  // Only a real assistant reply counts as "last reply" — echoing the
   // user's own message here was corrupting that stat (2026-08-27 fix).
   if (isGal) {
     lastReplyTime = new Date();
@@ -2373,7 +2399,7 @@ async function sendMessage() {
     if (es) es.remove();
     const wrap = document.createElement('div');
     wrap.className = 'msg gal';
-    wrap.innerHTML = `<div class="msg-avatar">✦</div>
+    wrap.innerHTML = `<div class="msg-avatar">${escapeHtml(skinStr('assistant_glyph'))}</div>
       <div>
         <div class="bubble streaming-bubble"></div>
         <div class="msg-time">${new Date().toTimeString().slice(0,8)}</div>
@@ -2917,7 +2943,7 @@ function restartPolling() {
   pollTimer = setInterval(poll, CFG.poll * 1000);
 }
 
-const WIDGET_VERSION = '1.3.44';
+const WIDGET_VERSION = '1.4.0';
 
 /* ── Input event wiring ── */
 $input.addEventListener('keydown', e => {
@@ -2940,9 +2966,9 @@ $newBtn.addEventListener('click', async () => {
     await apiFetch('/api/edge/new', { method: 'POST' });
     $msgs.innerHTML = `
       <div id="empty-state">
-        <div class="rune">✦</div>
-        <span>The mirror is still</span>
-        <span>Speak to awaken the light</span>
+        <div class="rune" data-skin="rune">${escapeHtml(skinStr('rune'))}</div>
+        <span data-skin="idle_title">${escapeHtml(skinStr('idle_title'))}</span>
+        <span data-skin="idle_text">${escapeHtml(skinStr('idle_text'))}</span>
       </div>`;
     msgCount = 0;
     $statMsgs.textContent = '0';
@@ -3155,7 +3181,7 @@ async function refreshInspect() {
         inspectContent.removeChild(inspectContent.firstChild);
       }
       if (pinned) inspectContent.scrollTop = inspectContent.scrollHeight;
-      inspectState.textContent = 'Following galadriel.service · 2s refresh · ' + inspectContent.children.length + ' entries';
+      inspectState.textContent = skinStr('logs_follow') + ' · 2s refresh · ' + inspectContent.children.length + ' entries';
     } else {
       inspectContent.innerHTML = renderMarkdown(data.report);
       inspectState.textContent = 'Live /status · refreshed ' + new Date().toLocaleTimeString();
@@ -3179,7 +3205,7 @@ function openInspect(mode) {
   inspectContent.innerHTML = '<div style="color:var(--text-dim);padding:8px 0;">Loading…</div>';
   inspectState.textContent = '';
   inspectPause.textContent = 'Pause';
-  document.getElementById('inspect-title').textContent = mode === 'logs' ? '≋ Service Logs' : '◈ Harness Status';
+  document.getElementById('inspect-title').textContent = mode === 'logs' ? skinStr('logs_title') : skinStr('status_title');
   inspectEl.style.display = 'flex'; document.body.classList.add('overlay-open');
   refreshInspect();
 }
