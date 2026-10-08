@@ -321,3 +321,19 @@ def test_version_is_1_4():
     v = re.search(r"const WIDGET_VERSION = '([\d.]+)';", HTML).group(1)
     assert tuple(map(int, v.split("."))) >= (1, 4, 0)
     assert json.loads((ROOT / "manifest.json").read_text())["version"] == v
+
+
+# ── the skins shipped here ───────────────────────────────────────────
+
+PERSONAL = re.compile(r"isildur|thomas|avasol\.|deodour|10\.0\.\d|\.service\b", re.I)
+
+
+@pytest.mark.parametrize("skin", ["aedelgard", "galadriel"])
+def test_shipped_skins_are_valid_and_carry_nothing_personal(tmp_path, skin):
+    d = ROOT / "skins" / skin
+    build.load_skin(d)
+    assert not PERSONAL.search((d / "skin.json").read_text(encoding="utf-8"))
+    _, _, files = _built(tmp_path, d)
+    for name, data in files.items():
+        if name.endswith((".html", ".json")):
+            assert not PERSONAL.search(data.decode("utf-8")), name

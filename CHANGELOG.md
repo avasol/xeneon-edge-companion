@@ -5,7 +5,7 @@ All notable changes to the Xeneon Edge Companion widget will be documented in th
 ## [1.4.0] - 2026-10-08
 ### Added
 - **Skins**: the widget now takes its whole look from a skin: colours, fonts, the portrait, the icon and its words. A skin is data only (no script, no CSS text, no SVG), described in `skins/SCHEMA.md`. `build.py --skin <folder>` validates a skin and packs one `.icuewidget` per skin; a skin can live outside this repository.
-- **The Aedelgard skin** (`skins/aedelgard`), a first draft.
+- **Two skins ship here:** `aedelgard` (gold on dark, the keystone and its kept flame; JetBrains Mono and Schibsted Grotesk when installed, system fonts otherwise) and `galadriel` (the silver look the widget was born with, minus anything personal).
 ### Changed
 - `index.html` is now a neutral template: every tinted colour goes through a skin variable, every name and phrase through a `data-skin` element filled with `textContent`. Rendered with a skin that carries the previous values, the widget is pixel-identical to 1.3.44 outside a recompressed portrait.
 - `build.sh` is replaced by `build.py`. The package id is now `com.aedelgard.edge.<skin>`, so iCUE treats each skin as its own widget.
