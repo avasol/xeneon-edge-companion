@@ -54,3 +54,9 @@ def test_footer_children_cannot_widen_the_grid():
 def test_version_1_4_2():
     assert re.search(r"WIDGET_VERSION\s*=\s*['\"]1\.4\.2['\"]", HTML)
     assert json.loads((ROOT / "manifest.json").read_text())["version"] == "1.4.2"
+
+
+def test_settings_readout_is_tight_enough_to_fit():
+    body = _rule(".stat-row.stat-cfg-row")
+    assert "letter-spacing: 0.02em" in body
+    assert re.search(r"\.stat-row\.stat-cfg-row \.val\s*\{[^}]*letter-spacing:\s*0", HTML)
