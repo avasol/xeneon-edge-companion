@@ -76,9 +76,12 @@ def test_ensure_config_rereads_while_token_missing():
     assert _vm(pre, "ensureConfig(); ensureConfig(); String(calls)") == "2"
 
 
-def test_ensure_config_idle_once_token_present():
+def test_ensure_config_keeps_rereading_once_token_present():
+    # Superseded in 1.4.1: idling once the token arrived froze any later change
+    # (the Tower URL edited in iCUE stayed at its default). reloadConfig only acts
+    # on a real change, so re-reading for the widget's lifetime is cheap.
     pre = "var calls = 0; function reloadConfig(){ calls++; } var CFG = { token: 'abc' };\n" + _fn("ensureConfig")
-    assert _vm(pre, "ensureConfig(); String(calls)") == "0"
+    assert _vm(pre, "ensureConfig(); String(calls)") == "1"
 
 
 def test_ensure_config_runs_for_the_widget_lifetime():
