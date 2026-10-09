@@ -491,7 +491,8 @@ body::after {
   gap: 10px;
 }
 .stat-row .val { color: var(--pri); font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
-.stat-row.stat-cfg-row { grid-column: 1 / -1; }
+.stat-row.stat-cfg-row { grid-column: 1 / -1; letter-spacing: 0.02em; }
+.stat-row.stat-cfg-row .val { letter-spacing: 0; }
 .stat-row.stat-build { opacity: 0.6; font-size: 17px; }
 
 /* Thinking indicator — overlaid on the portrait, doesn't displace it */
