@@ -2,6 +2,9 @@
 
 All notable changes to the Xeneon Edge Companion widget will be documented in this file.
 
+## [1.4.1] - 2026-10-08
+- Settings changed in iCUE after the token arrived now take effect (the Tower URL used to stay at its default).
+
 ## [1.4.0] - 2026-10-08
 ### Added
 - **Skins**: the widget now takes its whole look from a skin: colours, fonts, the portrait, the icon and its words. A skin is data only (no script, no CSS text, no SVG), described in `skins/SCHEMA.md`. `build.py --skin <folder>` validates a skin and packs one `.icuewidget` per skin; a skin can live outside this repository.

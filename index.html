@@ -2943,7 +2943,7 @@ function restartPolling() {
   pollTimer = setInterval(poll, CFG.poll * 1000);
 }
 
-const WIDGET_VERSION = '1.4.0';
+const WIDGET_VERSION = '1.4.1';
 
 /* ── Input event wiring ── */
 $input.addEventListener('keydown', e => {
@@ -3240,6 +3240,7 @@ document.addEventListener('keydown', e => {
    for each configured property the shapes it is (and is not) reachable in. The
    token VALUE is never printed, only presence and length. */
 function collectDiag() {
+  reloadConfig();
   const nameTypes = (name) => {
     const out = [];
     try { out.push('win:' + (typeof window[name])); } catch (e) { out.push('win:ERR'); }
@@ -3312,10 +3313,11 @@ if (typeof iCUE_initialized !== 'undefined' && iCUE_initialized) reloadConfig();
 setTimeout(reloadConfig, 300);
 setTimeout(reloadConfig, 1000);
 setTimeout(reloadConfig, 2500);
-/* iCUE can inject the token later than every hedge above and fire no event;
-   keep re-reading for the widget's lifetime while the token is missing. */
+/* iCUE can change any property later (e.g. the Tower URL edited after the
+   token arrived) without firing an event, so keep re-reading for the
+   widget's lifetime. reloadConfig only acts when something changed. */
 function ensureConfig() {
-  if (!CFG.token) reloadConfig();
+  reloadConfig();
 }
 setInterval(ensureConfig, 2000);
 
