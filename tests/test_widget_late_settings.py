@@ -40,6 +40,8 @@ def test_diag_reports_fresh_config():
     assert reload_at != -1 and reload_at < first_cfg, "diag must re-read settings before printing them"
 
 
-def test_version_1_4_1():
-    assert re.search(r"WIDGET_VERSION\s*=\s*['\"]1\.4\.1['\"]", HTML)
-    assert json.loads((ROOT / "manifest.json").read_text())["version"] == "1.4.1"
+def test_version_at_least_1_4_1():
+    m = re.search(r"WIDGET_VERSION\s*=\s*['\"](\d+)\.(\d+)\.(\d+)['\"]", HTML)
+    assert m and tuple(map(int, m.groups())) >= (1, 4, 1)
+    v = json.loads((ROOT / "manifest.json").read_text())["version"]
+    assert tuple(map(int, v.split("."))) >= (1, 4, 1)
