@@ -54,3 +54,9 @@ def test_stat_labels_never_wrap():
 def test_version_1_4_3():
     assert re.search(r"WIDGET_VERSION\s*=\s*['\"]1\.4\.3['\"]", HTML)
     assert json.loads((ROOT / "manifest.json").read_text())["version"] == "1.4.3"
+
+
+def test_stat_rows_leave_room_for_a_clock_value():
+    body = _rule(".stat-row")
+    assert "padding: 5px 10px" in body
+    assert "letter-spacing: 0.04em" in body
