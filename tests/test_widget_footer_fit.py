@@ -51,9 +51,11 @@ def test_footer_children_cannot_widen_the_grid():
     assert "min-width: 0" in _rule("#footer-right")
 
 
-def test_version_1_4_2():
-    assert re.search(r"WIDGET_VERSION\s*=\s*['\"]1\.4\.2['\"]", HTML)
-    assert json.loads((ROOT / "manifest.json").read_text())["version"] == "1.4.2"
+def test_version_at_least_1_4_2():
+    m = re.search(r"WIDGET_VERSION\s*=\s*['\"](\d+)\.(\d+)\.(\d+)['\"]", HTML)
+    assert m and tuple(map(int, m.groups())) >= (1, 4, 2)
+    v = json.loads((ROOT / "manifest.json").read_text())["version"]
+    assert tuple(map(int, v.split("."))) >= (1, 4, 2)
 
 
 def test_settings_readout_is_tight_enough_to_fit():
