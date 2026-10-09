@@ -470,8 +470,8 @@ body::after {
    laid out as a 2x2 grid rather than the tall stack the left panel used. */
 #stats {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 7px 22px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 5px 22px;
   width: 100%;
 }
 .stat-row {
@@ -487,8 +487,11 @@ body::after {
   color: var(--text-dim);
   letter-spacing: 0.08em;
   text-transform: uppercase;
+  min-width: 0;
+  gap: 10px;
 }
-.stat-row .val { color: var(--pri); font-variant-numeric: tabular-nums; }
+.stat-row .val { color: var(--pri); font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.stat-row.stat-cfg-row { grid-column: 1 / -1; }
 .stat-row.stat-build { opacity: 0.6; font-size: 17px; }
 
 /* Thinking indicator — overlaid on the portrait, doesn't displace it */
@@ -1259,9 +1262,11 @@ body.overlay-open #mirror-img {
   align-items: stretch;
   justify-content: center;
   gap: 8px;
-  padding: 10px 26px;
+  padding: 8px 26px;
   border-right: 1px solid var(--border);
   position: relative;
+  overflow: hidden;
+  min-width: 0;
 }
 
 #waveform {
@@ -1311,6 +1316,7 @@ body.overlay-open #mirror-img {
   align-items: center;
   gap: 18px;
   padding: 0 30px 0 36px;
+  min-width: 0;
 }
 
 #input-wrap {
@@ -1609,7 +1615,7 @@ body.overlay-open #mirror-img {
           <span>BUILD</span>
           <span class="val" id="stat-ver">—</span>
         </div>
-        <div class="stat-row stat-build">
+        <div class="stat-row stat-build stat-cfg-row">
           <span>SETTINGS</span>
           <span class="val" id="stat-cfg">—</span>
         </div>
@@ -2943,7 +2949,7 @@ function restartPolling() {
   pollTimer = setInterval(poll, CFG.poll * 1000);
 }
 
-const WIDGET_VERSION = '1.4.1';
+const WIDGET_VERSION = '1.4.2';
 
 /* ── Input event wiring ── */
 $input.addEventListener('keydown', e => {

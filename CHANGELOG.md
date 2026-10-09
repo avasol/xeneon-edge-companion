@@ -2,6 +2,9 @@
 
 All notable changes to the Xeneon Edge Companion widget will be documented in this file.
 
+## [1.4.2] - 2026-10-08
+- The SETTINGS readout no longer wraps and pushes the bottom bar out of view; it spans the stats panel on one line.
+
 ## [1.4.1] - 2026-10-08
 - Settings changed in iCUE after the token arrived now take effect (the Tower URL used to stay at its default).
 

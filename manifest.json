@@ -3,7 +3,7 @@
   "id": "com.aedelgard.edge.template",
   "name": "Edge",
   "description": "A desk window to your mind.",
-  "version": "1.4.1",
+  "version": "1.4.2",
   "preview_icon": "resources/icon.png",
   "min_framework_version": "1.0.0",
   "os": [
