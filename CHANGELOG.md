@@ -2,6 +2,9 @@
 
 All notable changes to the Xeneon Edge Companion widget will be documented in this file.
 
+## [1.4.3] - 2026-10-08
+- The Commands rail starts at the top and its buttons share its height, so Diag never falls below the input bar; stat labels no longer wrap.
+
 ## [1.4.2] - 2026-10-08
 - The SETTINGS readout no longer wraps and pushes the bottom bar out of view; it spans the stats panel on one line.
 

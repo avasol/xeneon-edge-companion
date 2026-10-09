@@ -493,6 +493,7 @@ body::after {
 .stat-row .val { color: var(--pri); font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .stat-row.stat-cfg-row { grid-column: 1 / -1; letter-spacing: 0.02em; }
 .stat-row.stat-cfg-row .val { letter-spacing: 0; }
+.stat-row > span:first-child { white-space: nowrap; flex-shrink: 0; }
 .stat-row.stat-build { opacity: 0.6; font-size: 17px; }
 
 /* Thinking indicator — overlaid on the portrait, doesn't displace it */
@@ -623,8 +624,8 @@ body::after {
   flex-direction: column;
   border-left: 1px solid var(--border);
   background: var(--panel);
-  padding: calc(12px + var(--header-h)) 14px 12px 14px;
-  gap: 10px;
+  padding: 14px 14px 12px 14px;
+  gap: 8px;
   position: relative;
   overflow: hidden;
   min-height: 0;
@@ -648,6 +649,7 @@ body::after {
   text-align: center;
   margin-bottom: 4px;
   display: flex; align-items: center; gap: 8px;
+  flex-shrink: 0;
 }
 #right-rail-title::before, #right-rail-title::after {
   content: ''; flex: 1; height: 1px; background: var(--pri-dim); opacity: 0.5;
@@ -660,7 +662,8 @@ body::after {
   background: none;
   border: 1px solid rgba(var(--pri-rgb),0.20);
   color: var(--text-dim);
-  padding: 14px 10px;
+  padding: 6px 10px;
+  flex: 1 1 0; min-height: 0; justify-content: center; overflow: hidden;
   border-radius: 4px;
   font-size: 18px;
   letter-spacing: 0.1em;
@@ -669,7 +672,7 @@ body::after {
   font-family: inherit;
   transition: border-color 0.2s, color 0.2s, box-shadow 0.2s;
 }
-.special-cmd-btn .cmd-icon { font-size: 28px; }
+.special-cmd-btn .cmd-icon { font-size: 24px; line-height: 1; }
 .special-cmd-btn:hover {
   border-color: var(--pri);
   color: var(--pri);
@@ -2950,7 +2953,7 @@ function restartPolling() {
   pollTimer = setInterval(poll, CFG.poll * 1000);
 }
 
-const WIDGET_VERSION = '1.4.2';
+const WIDGET_VERSION = '1.4.3';
 
 /* ── Input event wiring ── */
 $input.addEventListener('keydown', e => {
