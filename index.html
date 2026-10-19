@@ -1803,14 +1803,23 @@ function renderCfgDiag() {
    403. This row PROBES the door so a rejected token reads as rejected instead
    of silently green. Never prints the token. */
 let connState = 'unknown';
+let lastConnError = '';
 async function verifyConnection() {
   if (!CFG.token || !CFG.url) { connState = 'unknown'; renderCfgDiag(); return; }
   connState = 'checking'; renderCfgDiag();
+  const ctrl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+  const timer = (ctrl && typeof setTimeout === 'function') ? setTimeout(() => ctrl.abort(), 6000) : null;
   try {
-    const res = await fetch(CFG.url.replace(/\/$/, '') + '/api/edge/status', { headers: headers() });
+    const opts = { headers: headers() };
+    if (ctrl) opts.signal = ctrl.signal;
+    const res = await fetch(CFG.url.replace(/\/$/, '') + '/api/edge/status', opts);
     connState = res.ok ? 'ok' : (res.status === 403 ? 'rejected' : 'unreachable');
+    if (typeof lastConnError !== 'undefined') lastConnError = res.ok ? '' : ('HTTP ' + res.status);
   } catch (e) {
     connState = 'unreachable';
+    if (typeof lastConnError !== 'undefined') lastConnError = String((e && e.message) || e);
+  } finally {
+    if (timer && typeof clearTimeout === 'function') clearTimeout(timer);
   }
   renderCfgDiag();
 }
@@ -1825,7 +1834,7 @@ function reloadConfig() {
     restartPolling();     // only restart if something actually changed
     verifyConnection();   // re-probe the door whenever settings move
   }
-  if (tokenAppeared) {                  // the token landed after boot: load history
+  if (tokenAppeared || (changed && CFG.token && CFG.url)) {
     loadHistory();
   }
 }
@@ -1885,6 +1894,9 @@ const $statSess  = document.getElementById('stat-session');
 const $statLast  = document.getElementById('stat-last');
 
 /* ── State ── */
+const EDGE_BOOT = (typeof crypto !== 'undefined' && crypto && crypto.randomUUID)
+  ? crypto.randomUUID()
+  : ('b' + Date.now().toString(36) + Math.random().toString(16).slice(2));
 let msgCount     = 0;
 let sessionStart = Date.now();
 let lastReplyTime = null;
@@ -2077,17 +2089,26 @@ function headers() {
   return {
     'Content-Type': 'application/json',
     'X-Edge-Token': CFG.token,
+    'X-Edge-Boot': EDGE_BOOT,
   };
 }
 
 async function apiFetch(path, options = {}) {
   const url = CFG.url.replace(/\/$/, '') + path;
-  const res = await fetch(url, { ...options, headers: headers() });
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error(body.error || `HTTP ${res.status}`);
+  const ctrl = (!options.signal && typeof AbortController !== 'undefined') ? new AbortController() : null;
+  const timer = (ctrl && typeof setTimeout === 'function') ? setTimeout(() => ctrl.abort(), 6000) : null;
+  try {
+    const fetchOpts = { ...options, headers: headers() };
+    if (ctrl) fetchOpts.signal = ctrl.signal;
+    const res = await fetch(url, fetchOpts);
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.error || `HTTP ${res.status}`);
+    }
+    return res.status === 204 ? null : res.json();
+  } finally {
+    if (timer && typeof clearTimeout === 'function') clearTimeout(timer);
   }
-  return res.status === 204 ? null : res.json();
 }
 
 /* ── Render a message bubble ── */
@@ -2286,7 +2307,7 @@ async function loadHistory() {
     loaded = true;
   } catch (e) {
     setStatus('offline', 'TOWER OFFLINE');
-    loaded = true;
+    if (typeof lastConnError !== 'undefined') lastConnError = String((e && e.message) || e);
   }
   // Show build version in sidebar
   const $ver = document.getElementById('stat-ver');
@@ -2787,10 +2808,21 @@ function flushDeferredPoll() {
 }
 
 let pollFailures = 0;   // consecutive — one blip must not paint the dot red (flicker)
+let pollInFlight = false;
 async function poll() {
+  if (pollInFlight) return;
+  pollInFlight = true;
   try {
     const data = await apiFetch('/api/edge/poll');
     pollFailures = 0;
+    if (typeof lastConnError !== 'undefined') lastConnError = '';
+    if (typeof connState !== 'undefined' && connState !== 'ok') {
+      connState = 'ok';
+      if (typeof renderCfgDiag === 'function') renderCfgDiag();
+    }
+    if (typeof loaded !== 'undefined' && !loaded && typeof loadHistory === 'function') {
+      loadHistory();
+    }
     if (data && Array.isArray(data.approvals)) {
       syncApprovals(data.approvals, data.approvals_closed);
     } else if (data && data.type === 'approval') {
@@ -2829,14 +2861,17 @@ async function poll() {
     if ($dot.className !== 'sending') {
       setStatus('online', 'TOWER ONLINE');
     }
-  } catch {
+  } catch (e) {
     pollFailures++;
+    if (typeof lastConnError !== 'undefined') lastConnError = String((e && e.message) || e);
     // Debounced (2026-09-05): a single failed 3s poll used to flip the dot
     // red and the next success flipped it green — the "flicker". Two
     // consecutive misses is a real outage signal; one is a blip.
     if (pollFailures >= 2 && $dot.className !== 'sending') {
       setStatus('offline', 'TOWER OFFLINE');
     }
+  } finally {
+    pollInFlight = false;
   }
 }
 
@@ -2953,7 +2988,7 @@ function restartPolling() {
   pollTimer = setInterval(poll, CFG.poll * 1000);
 }
 
-const WIDGET_VERSION = '1.4.3';
+const WIDGET_VERSION = '1.4.4';
 
 /* ── Input event wiring ── */
 $input.addEventListener('keydown', e => {
@@ -3298,15 +3333,25 @@ function collectDiag() {
   L.push('towerUrl : ' + (CFG.url || '(empty)'));
   L.push('edgeToken: ' + (CFG.token ? 'PRESENT str(' + CFG.token.length + ')' : 'EMPTY'));
   L.push('pollSecs : ' + CFG.poll + 's');
+  L.push('');
+  L.push('── tower connection ──');
+  L.push('connState   : ' + (typeof connState !== 'undefined' ? connState : 'n/a'));
+  L.push('loaded      : ' + (typeof loaded !== 'undefined' ? String(loaded) : 'n/a'));
+  L.push('pollFailures: ' + (typeof pollFailures !== 'undefined' ? String(pollFailures) : 'n/a'));
+  L.push('lastError   : ' + ((typeof lastConnError !== 'undefined' && lastConnError) ? lastConnError : '(none)'));
   return L.join('\n');
 }
 function openDiag() {
   closeMediaPanel(); stopInspect();
   inspectContent.className = 'logs-view';
-  inspectContent.innerHTML = '<pre style="white-space:pre-wrap;font-size:15px;line-height:1.5;">' + escapeHtml(collectDiag()) + '</pre>';
+  const render = () => {
+    inspectContent.innerHTML = '<pre style="white-space:pre-wrap;font-size:15px;line-height:1.5;">' + escapeHtml(collectDiag()) + '</pre>';
+  };
+  render();
   inspectState.textContent = '';
   document.getElementById('inspect-title').textContent = '⌁ iCUE Delivery Diagnostic';
   inspectEl.style.display = 'flex'; document.body.classList.add('overlay-open');
+  Promise.resolve(verifyConnection()).then(render).catch(() => {});
 }
 
 /* ── Boot ── */

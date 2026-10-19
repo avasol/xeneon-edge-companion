@@ -2,6 +2,12 @@
 
 All notable changes to the Xeneon Edge Companion widget will be documented in this file.
 
+## [1.4.4] - 2026-10-19
+- **Overnight socket starvation fixed**: the trace flush referenced an undefined boot id (throwing every 30 s), and neither the poll loop nor the trace flush guarded against overlapping requests — when the Tower host stopped overnight, thousands of pending fetches piled up until the webview wedged. Both now single-flight, and every request carries an `AbortController` timeout.
+- **Self-healing reconnect**: a widget that booted while the Tower was down no longer stays stuck on 'conn ✗' with an empty thread; the poll loop restores the connection state and retries history once the Tower answers again.
+- **Live Diag**: opening the Diagnostic re-probes the Tower and reports the current connection state, history load and last error.
+- Settings changed after the token arrived reload history when the Tower URL moves.
+
 ## [1.4.3] - 2026-10-08
 - The Commands rail starts at the top and its buttons share its height, so Diag never falls below the input bar; stat labels no longer wrap.
 

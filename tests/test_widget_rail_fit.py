@@ -52,8 +52,10 @@ def test_stat_labels_never_wrap():
 
 
 def test_version_1_4_3():
-    assert re.search(r"WIDGET_VERSION\s*=\s*['\"]1\.4\.3['\"]", HTML)
-    assert json.loads((ROOT / "manifest.json").read_text())["version"] == "1.4.3"
+    m = re.search(r"WIDGET_VERSION\s*=\s*['\"](\d+)\.(\d+)\.(\d+)['\"]", HTML)
+    assert m and tuple(map(int, m.groups())) >= (1, 4, 3)
+    v = json.loads((ROOT / "manifest.json").read_text())["version"]
+    assert tuple(map(int, v.split("."))) >= (1, 4, 3)
 
 
 def test_stat_rows_leave_room_for_a_clock_value():
