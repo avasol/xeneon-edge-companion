@@ -2195,7 +2195,7 @@ function renderMarkdown(raw, baseUrl) {
   // Media tags are placeholdered immediately, same as code blocks below —
   // otherwise later markdown passes (bold/italic especially: `_(.+?)_`)
   // tear into the URL itself. Generated-image filenames are timestamp+prompt
-  // joined with underscores (e.g. ..._a_palantír.png), so the italic regex
+  // joined with underscores (e.g. ..._a_generated_asset.png), so the italic regex
   // ALWAYS finds a pair and splices <em></em> into the src, corrupting it
   // into a 404. Field wound 2026-08-29: confirmed via server access log —
   // the browser requested a filename with literal <em>/</em> inside it.
