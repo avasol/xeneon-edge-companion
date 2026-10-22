@@ -246,7 +246,7 @@ body::after {
    ═══════════════════════════════════════════════════════════════ */
 #main {
   display: grid;
-  grid-template-columns: var(--w-left) 1fr var(--w-right);
+  grid-template-columns: var(--w-left) minmax(0, 1fr) var(--w-right);
   overflow: hidden;
   min-height: 0;
   contain: layout style;
@@ -529,6 +529,7 @@ body::after {
   flex-direction: column;
   background: var(--panel);
   position: relative;
+  min-width: 0;
   min-height: 0;
   overflow: hidden;
   contain: layout style;
@@ -1032,7 +1033,12 @@ body.overlay-open #mirror-img {
   align-items: flex-start;
   animation: fade-in 0.22s ease;
   max-width: min(88%, 1500px);
+  min-width: 0;
 }
+/* Message body (bubble + time) is the flex sibling after the avatar; it must
+   be allowed to shrink so long words/tables scroll inside the bubble instead
+   of pushing the whole center track wide. */
+.msg > div:last-child { min-width: 0; }
 @keyframes fade-in { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; } }
 
 .msg.gal { align-self: flex-start; }
@@ -2988,7 +2994,7 @@ function restartPolling() {
   pollTimer = setInterval(poll, CFG.poll * 1000);
 }
 
-const WIDGET_VERSION = '1.4.4';
+const WIDGET_VERSION = '1.4.5';
 
 /* ── Input event wiring ── */
 $input.addEventListener('keydown', e => {
