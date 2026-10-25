@@ -2066,9 +2066,14 @@ function tickClock() {
 }
 // STILL WATER: the clock reads HH:MM and the session counter advances by the
 // minute, so a 60 s cadence never misses a visible change. The interval runs
-// every minute; a single timeout aligns the next repaint to the minute edge.
-setInterval(tickClock, 60000);
-setTimeout(tickClock, 60000 - (Date.now() % 60000));
+// every minute; a timeout aligns the repaint to the minute edge and restarts
+// the interval from there, so every later tick also lands on the edge.
+let clockInterval = setInterval(tickClock, 60000);
+setTimeout(() => {
+  tickClock();
+  clearInterval(clockInterval);
+  clockInterval = setInterval(tickClock, 60000);
+}, 60000 - (Date.now() % 60000));
 tickClock();
 
 /* ── Status helpers ── */
