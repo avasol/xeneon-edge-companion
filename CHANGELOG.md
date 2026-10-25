@@ -2,6 +2,9 @@
 
 All notable changes to the Xeneon Edge Companion widget will be documented in this file.
 
+## [1.4.6] - 2026-10-25
+- **STILL WATER restored**: an idle widget writes nothing. The SETTINGS row is no longer rewritten every 2 s when its text, colour and title are unchanged, the clock and session counter now update at most once a minute, and the typing dots animate only while visible.
+
 ## [1.4.4] - 2026-10-19
 - **Overnight socket starvation fixed**: the trace flush referenced an undefined boot id (throwing every 30 s), and neither the poll loop nor the trace flush guarded against overlapping requests — when the Tower host stopped overnight, thousands of pending fetches piled up until the webview wedged. Both now single-flight, and every request carries an `AbortController` timeout.
 - **Self-healing reconnect**: a widget that booted while the Tower was down no longer stays stuck on 'conn ✗' with an empty thread; the poll loop restores the connection state and retries history once the Tower answers again.

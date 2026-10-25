@@ -514,8 +514,10 @@ body::after {
   width: 8px; height: 8px;
   border-radius: 50%;
   background: var(--sec);
-  animation: dot-bounce 1.2s ease-in-out infinite;
   box-shadow: 0 0 8px var(--sec), 0 0 2px rgba(0,0,0,0.8);
+}
+#typing-dots.visible span {
+  animation: dot-bounce 1.2s ease-in-out infinite;
 }
 #typing-dots span:nth-child(2) { animation-delay: 0.2s; background: var(--pri); box-shadow: 0 0 8px var(--pri), 0 0 2px rgba(0,0,0,0.8); }
 #typing-dots span:nth-child(3) { animation-delay: 0.4s; background: var(--sec); box-shadow: 0 0 8px var(--sec), 0 0 2px rgba(0,0,0,0.8); }
@@ -1793,16 +1795,23 @@ function renderCfgDiag() {
   const url = CFG.url   ? 'url \u2713' : 'url \u2717';
   const conn = {unknown:'conn \u00b7', checking:'conn \u2026', ok:'conn \u2713',
                 rejected:'conn \u2717', unreachable:'conn \u2717'}[connState] || 'conn \u00b7';
-  $c.textContent = `${tok} \u00b7 ${url} \u00b7 ${conn} \u00b7 ${CFG.poll}s`;
+  const text = `${tok} \u00b7 ${url} \u00b7 ${conn} \u00b7 ${CFG.poll}s`;
   const bad = !CFG.token || connState === 'rejected' || connState === 'unreachable';
-  $c.style.color = bad ? 'var(--status-error, #c06060)' : '';
-  $c.title = !CFG.token
+  const color = bad ? 'var(--status-error, #c06060)' : '';
+  const title = !CFG.token
     ? 'iCUE has NOT delivered an Edge Token. Open the widget settings, paste it, and this row should turn green.'
     : connState === 'rejected'
       ? 'The Tower REJECTED your token (403). Re-enter it in the widget settings; a stale value is being sent.'
       : connState === 'unreachable'
         ? 'The Tower did not answer. Check the Tower URL and that the Tower is running.'
         : 'iCUE delivered your settings and the Tower accepted the token.';
+  // STILL WATER: this runs every 2 s (ensureConfig -> reloadConfig); writing an
+  // unchanged value still dirties the DOM and repaints the widget. Remember the
+  // last values we wrote and touch the row only when one of them changes.
+  const cache = renderCfgDiag._cache || (renderCfgDiag._cache = {});
+  if (cache.text !== text) { $c.textContent = text; cache.text = text; }
+  if (cache.color !== color) { $c.style.color = color; cache.color = color; }
+  if (cache.title !== title) { $c.title = title; cache.title = title; }
 }
 
 /* Presence of a token is NOT validity: the Tower answers a wrong token with a
@@ -2041,21 +2050,25 @@ let lastTimeStr = '';
 let lastSessStr = '';
 function tickClock() {
   const now = new Date();
-  const timeStr = now.toTimeString().slice(0,8);
+  const timeStr = now.toTimeString().slice(0,5);
   if (timeStr !== lastTimeStr) {
     $time.textContent = timeStr;
     lastTimeStr = timeStr;
   }
   const elapsed = Math.floor((Date.now() - sessionStart) / 1000);
-  const mm = String(Math.floor(elapsed / 60)).padStart(2, '0');
-  const ss = String(elapsed % 60).padStart(2, '0');
-  const sessStr = `${mm}:${ss}`;
+  const hh = Math.floor(elapsed / 3600);
+  const mm = String(Math.floor((elapsed % 3600) / 60)).padStart(2, '0');
+  const sessStr = `${hh}:${mm}`;
   if (sessStr !== lastSessStr) {
     $statSess.textContent = sessStr;
     lastSessStr = sessStr;
   }
 }
-setInterval(tickClock, 1000);
+// STILL WATER: the clock reads HH:MM and the session counter advances by the
+// minute, so a 60 s cadence never misses a visible change. The interval runs
+// every minute; a single timeout aligns the next repaint to the minute edge.
+setInterval(tickClock, 60000);
+setTimeout(tickClock, 60000 - (Date.now() % 60000));
 tickClock();
 
 /* ── Status helpers ── */
@@ -2994,7 +3007,7 @@ function restartPolling() {
   pollTimer = setInterval(poll, CFG.poll * 1000);
 }
 
-const WIDGET_VERSION = '1.4.5';
+const WIDGET_VERSION = '1.4.6';
 
 /* ── Input event wiring ── */
 $input.addEventListener('keydown', e => {
