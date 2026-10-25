@@ -182,3 +182,47 @@ def test_version_is_1_4_6_everywhere():
     assert v == "1.4.6"
     assert json.loads((ROOT / "manifest.json").read_text(encoding="utf-8"))["version"] == "1.4.6"
     assert "## [1.4.6]" in (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
+
+
+# 2b -- the clock stays on the minute (review of drone e3234b0e6989) --------
+# A 60 s interval started at load drifts: loaded at 20:00:05 it fires at
+# 20:01:05, 20:02:05 ... so after the first boundary the clock shows the old
+# minute for up to 59 s. The repaint cadence must be aligned to the minute edge.
+
+def _clock_sim_prelude(t0_iso):
+    return (
+        _FAKE_EL
+        + "var __now = Date.parse(" + json.dumps(t0_iso) + ");\n"
+        "var RealDate = Date;\n"
+        "function FakeDate(a){ return a === undefined ? new RealDate(__now) : new RealDate(a); }\n"
+        "FakeDate.now = function(){ return __now; }; FakeDate.parse = RealDate.parse;\n"
+        "var Date = FakeDate;\n"
+        "var timers = {}, nextId = 1;\n"
+        "function setInterval(fn, ms){ var id = nextId++; timers[id] = {fn: fn, ms: ms, at: __now + ms, rep: true}; return id; }\n"
+        "function setTimeout(fn, ms){ var id = nextId++; timers[id] = {fn: fn, ms: ms, at: __now + ms, rep: false}; return id; }\n"
+        "function clearTimeout(id){ delete timers[id]; } function clearInterval(id){ delete timers[id]; }\n"
+        "function advanceTo(t){ for(;;){ var best = null, bid = null;"
+        " for (var k in timers){ if (timers[k].at <= t && (best === null || timers[k].at < best.at)) { best = timers[k]; bid = k; } }"
+        " if (best === null) break; __now = best.at;"
+        " if (best.rep) best.at += best.ms; else delete timers[bid]; best.fn(); }"
+        " __now = t; }\n"
+        "var $time = new FakeEl(); var $statSess = new FakeEl();\n"
+        "var sessionStart = __now;\n"
+    )
+
+
+def test_clock_shows_the_current_minute_within_a_second_of_each_boundary():
+    sec = _clock_section()
+    pre = _clock_sim_prelude("2026-10-25T20:00:05") + sec
+    body = (
+        "var seen = [];"
+        " for (var m = 1; m <= 4; m++) {"
+        "   var edge = Date.parse('2026-10-25T20:00:00') + m * 60000;"
+        "   advanceTo(edge + 1000);"
+        "   seen.push([new RealDate(__now).toTimeString().slice(0,5), $time.textContent]);"
+        " }"
+        " globalThis.__r = seen;"
+    )
+    r = json.loads(_vm(pre, body))
+    for want, got in r:
+        assert got == want, f"clock reads {got!r} one second after the {want} boundary"
