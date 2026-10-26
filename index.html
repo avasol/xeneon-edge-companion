@@ -2223,7 +2223,7 @@ function renderMsg(role, text, time) {
 
   placeInThread(div);
 
-  if (pillOptions.length) renderPills(pillOptions, div);
+  if (pillOptions.length) renderPills(pillOptions, div.querySelector('.bubble'));
 
   msgCount++;
   $statMsgs.textContent = msgCount;
@@ -2252,7 +2252,14 @@ function renderPills(options, parent) {
     });
     wrap.appendChild(btn);
   });
-  (parent || document.getElementById('thread')).appendChild(wrap);
+  // Given the bubble, the pills belong UNDER it, inside the message's content
+  // column (before .msg-time) — a third flex child of .msg lands to the RIGHT
+  // of the bubble and gets scrolled out of view on long replies (F2).
+  if (parent && parent.classList && parent.classList.contains('bubble')) {
+    parent.insertAdjacentElement('afterend', wrap);
+  } else {
+    (parent || document.getElementById('thread')).appendChild(wrap);
+  }
   return wrap;
 }
 
