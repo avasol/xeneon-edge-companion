@@ -61,3 +61,13 @@ def test_render_pills_uses_textcontent_and_sends():
 
 def test_send_clears_pills():
     assert re.search(r"querySelectorAll\(['\"]\.pills['\"]\)", _fn("sendMessage"))
+
+
+def test_a_user_message_retires_older_pills():
+    # Round 2: on a history reload that ends on the user's message, the earlier
+    # reply's buttons must not stay. Painting any non-reply message (the user's)
+    # removes every existing .pills container.
+    src = _fn("renderMsg")
+    assert re.search(r"if\s*\(\s*!isGal\s*\)[^;]*querySelectorAll\('\.pills'\)", src) or \
+        re.search(r"!isGal[\s\S]{0,200}querySelectorAll\('\.pills'\)", src), \
+        "renderMsg must remove existing .pills when painting a user message"
