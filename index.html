@@ -2217,6 +2217,10 @@ function renderMsg(role, text, time) {
       <div class="msg-time">${timeStr}${isGal ? ' <button class="btn-copy" title="Copy" onclick="copyMsg(this)">\u2398 copy</button>' : ''}</div>
     </div>`;
 
+  // A user message retires any stale pill buttons from an earlier reply
+  // (e.g. when a history reload ends on the user's message).
+  if (!isGal) document.querySelectorAll('.pills').forEach(function (el) { el.remove(); });
+
   placeInThread(div);
 
   if (pillOptions.length) renderPills(pillOptions, div);
