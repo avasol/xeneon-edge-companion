@@ -1434,6 +1434,24 @@ body.overlay-open #mirror-img {
 .bubble hr{border:none;border-top:1px solid var(--border);margin:10px 0}
 .bubble a{text-decoration:underline;cursor:pointer}
 
+/* ── Ready-to-click option pills (Edge widget) ── */
+.pills {
+  display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 4px;
+}
+.pill {
+  background: rgba(var(--pri-rgb),0.10);
+  border: 1px solid rgba(var(--pri-rgb),0.35);
+  border-radius: 16px;
+  color: var(--pri);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 20px;
+  padding: 6px 16px;
+  transition: background .15s, border-color .15s;
+}
+.pill:hover { background: rgba(var(--pri-rgb),0.22); border-color: var(--pri); }
+.pill:active { transform: scale(0.96); }
+
 /* ── Copy button (hover on the mind's messages) ── */
 .btn-copy {
   background: none; border: none; cursor: pointer;
@@ -2136,6 +2154,44 @@ async function apiFetch(path, options = {}) {
 }
 
 /* ── Render a message bubble ── */
+/* pills:begin */
+function parsePills(text) {
+  if (typeof text !== 'string') return { text: text, options: [] };
+  const lines = text.split('\n');
+  const kept = [];
+  let inFence = false;
+  let options = [];
+  let found = false;
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const trimmed = line.trim();
+    if (trimmed.indexOf('```') === 0) { inFence = !inFence; kept.push(line); continue; }
+    if (!inFence) {
+      const m = trimmed.match(/^\[\[options:(.*)\]\]$/);
+      if (m) {
+        const parts = m[1].split('|').map(function (p) { return p.trim(); });
+        const valid = parts.length >= 1 && parts.length <= 4 && parts.every(function (p) {
+          return p.length >= 1 && p.length <= 40 && p.indexOf('[') < 0 && p.indexOf(']') < 0;
+        });
+        if (valid) {
+          const seen = {};
+          options = [];
+          parts.forEach(function (p) {
+            if (!seen[p]) { seen[p] = true; options.push(p); }
+          });
+          found = true;
+          continue;
+        }
+      }
+    }
+    kept.push(line);
+  }
+  if (!found) return { text: text, options: [] };
+  const clean = kept.join('\n').replace(/\n{3,}/g, '\n\n').trimEnd();
+  return { text: clean, options: options };
+}
+/* pills:end */
+
 function renderMsg(role, text, time) {
   const el = document.getElementById('empty-state');
   if (el) el.remove();
@@ -2146,14 +2202,24 @@ function renderMsg(role, text, time) {
 
   const timeStr = time || new Date().toTimeString().slice(0,8);
 
+  let bodyText = text;
+  let pillOptions = [];
+  if (isGal) {
+    const parsed = parsePills(text);
+    bodyText = parsed.text;
+    pillOptions = parsed.options;
+  }
+
   div.innerHTML = `
     <div class="msg-avatar">${isGal ? escapeHtml(skinStr('assistant_glyph')) : escapeHtml(skinStr('user_glyph'))}</div>
     <div>
-      <div class="bubble">${isGal ? renderMarkdown(text, CFG.url) : escapeHtml(text)}</div>
+      <div class="bubble">${isGal ? renderMarkdown(bodyText, CFG.url) : escapeHtml(bodyText)}</div>
       <div class="msg-time">${timeStr}${isGal ? ' <button class="btn-copy" title="Copy" onclick="copyMsg(this)">\u2398 copy</button>' : ''}</div>
     </div>`;
 
   placeInThread(div);
+
+  if (pillOptions.length) renderPills(pillOptions, div);
 
   msgCount++;
   $statMsgs.textContent = msgCount;
@@ -2165,6 +2231,27 @@ function renderMsg(role, text, time) {
   }
   return div;
 }
+
+function renderPills(options, parent) {
+  document.querySelectorAll('.pills').forEach(function (el) { el.remove(); });
+  const wrap = document.createElement('div');
+  wrap.className = 'pills';
+  options.forEach(function (label) {
+    const btn = document.createElement('button');
+    btn.className = 'pill';
+    btn.textContent = label;
+    btn.title = 'Send: ' + label;
+    btn.setAttribute('aria-label', 'Send: ' + label);
+    btn.addEventListener('click', function () {
+      $input.value = label;
+      sendMessage();
+    });
+    wrap.appendChild(btn);
+  });
+  (parent || document.getElementById('thread')).appendChild(wrap);
+  return wrap;
+}
+
 
 function renderError(text) {
   const el = document.getElementById('empty-state');
@@ -2417,6 +2504,7 @@ async function sendMessage() {
   $input.disabled = true;
   $sendBtn.disabled = true;
   $input.value = '';
+  document.querySelectorAll('.pills').forEach(function (el) { el.remove(); });
 
   const sendImages = stagedImages.slice();
   const sendFiles  = stagedFiles.slice();
