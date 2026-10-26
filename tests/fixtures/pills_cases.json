@@ -1,0 +1,16 @@
+[
+  {"name": "basic", "text": "Done.\n\n[[options: Release | Fix]]", "clean": "Done.", "options": ["Release", "Fix"]},
+  {"name": "none", "text": "Just a reply.\nTwo lines.", "clean": "Just a reply.\nTwo lines.", "options": []},
+  {"name": "before_chip", "text": "Done.\n[[options: A | B]]\n\n\ud83d\udfe0 **Your move**", "clean": "Done.\n\n\ud83d\udfe0 **Your move**", "options": ["A", "B"]},
+  {"name": "whitespace", "text": "Hi\n  [[options:Go UI-2|Release ]]  ", "clean": "Hi", "options": ["Go UI-2", "Release"]},
+  {"name": "five_is_invalid", "text": "x\n[[options: a | b | c | d | e]]", "clean": "x\n[[options: a | b | c | d | e]]", "options": []},
+  {"name": "empty_label_invalid", "text": "x\n[[options: a | | b]]", "clean": "x\n[[options: a | | b]]", "options": []},
+  {"name": "long_label_invalid", "text": "x\n[[options: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa]]", "clean": "x\n[[options: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa]]", "options": []},
+  {"name": "inline_ignored", "text": "write [[options: A | B]] like this", "clean": "write [[options: A | B]] like this", "options": []},
+  {"name": "in_code_fence_ignored", "text": "Syntax:\n```\n[[options: A | B]]\n```", "clean": "Syntax:\n```\n[[options: A | B]]\n```", "options": []},
+  {"name": "last_wins_all_removed", "text": "[[options: Old]]\nBody\n[[options: New | Other]]", "clean": "Body", "options": ["New", "Other"]},
+  {"name": "duplicates_collapsed", "text": "x\n[[options: Go | go | Go]]", "clean": "x", "options": ["Go", "go"]},
+  {"name": "wrong_keyword", "text": "x\n[[Options: A]]", "clean": "x\n[[Options: A]]", "options": []},
+  {"name": "single", "text": "Ready when you are.\n[[options: Release]]", "clean": "Ready when you are.", "options": ["Release"]},
+  {"name": "forty_ok", "text": "x\n[[options: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa]]", "clean": "x", "options": ["aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"]}
+]
