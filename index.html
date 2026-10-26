@@ -2336,9 +2336,13 @@ function renderMarkdown(raw, baseUrl) {
     media.push(`<img class="md-img" src="${escapeHtml(u)}" alt="${escapeHtml(a)}" loading="lazy">`);
     return `\x00MD${media.length-1}\x00`;
   });
-  s = s.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_,t,h) =>
-    `<a data-href="${escapeHtml(h)}" onclick="openLinkSheet(this.dataset.href);return false">${escapeHtml(t)}</a>`);
+  const lk=[];
+    s = s.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_,t,h) => {
+    lk.push(`<a data-href="${escapeHtml(h)}" onclick="openLinkSheet(this.dataset.href);return false">${escapeHtml(t)}</a>`);
+      return `\x00LK${lk.length-1}\x00`;
+    });
   s = s.replace(/^###### (.+)$/gm,'<h6>$1</h6>');
+    
   s = s.replace(/^##### (.+)$/gm,'<h5>$1</h5>');
   s = s.replace(/^#### (.+)$/gm,'<h4>$1</h4>');
   s = s.replace(/^### (.+)$/gm,'<h3>$1</h3>');
@@ -2399,7 +2403,20 @@ function renderMarkdown(raw, baseUrl) {
     const its = lines.map(l=>`<li>${l.replace(/^[ \t]*\d+\.[ \t]/,'').trim()}</li>`).join('');
     return `<ol start="${start}">${its}</ol>`;
   });
-  s = s.split(/\n{2,}/).map(p => {
+  // Bare http(s) URLs become link-sheet anchors (SPEC_convoy3 S4). Runs after
+    // every inline formatting pass so the only thing it can see is plain text:
+    // code blocks, inline code, media tags and markdown links are all held as
+    // \x00..\x00 placeholders at this point. Trailing punctuation that belongs
+    // to the surrounding prose (sentence '.', wrapping ')' etc.) is peeled off
+    // and kept as literal text after the link.
+    s = s.replace(/\bhttps?:\/\/[^\s<>"'\x00]+/g, m => {
+      const tail = m.match(/[.,;:!?)\]'"]+$/);
+      const trail = tail ? tail[0] : '';
+      const url = trail ? m.slice(0, -trail.length) : m;
+      if (!url) return m;
+      return '<a data-href="' + escapeHtml(url) + '" onclick="openLinkSheet(this.dataset.href);return false">' + escapeHtml(url) + '</a>' + trail;
+    });
+    s = s.split(/\n{2,}/).map(p => {
     p = p.trim(); if (!p) return '';
     if (/^<(h[1-6]|ul|ol|pre|hr|blockquote|img|div)/.test(p)) return p;
     return `<p>${p.replace(/\n/g,'<br>')}</p>`;
@@ -2407,6 +2424,7 @@ function renderMarkdown(raw, baseUrl) {
   s = s.replace(/\x00CB(\d+)\x00/g,(_,i)=>cb[+i]);
   s = s.replace(/\x00IC(\d+)\x00/g,(_,i)=>ic[+i]);
   s = s.replace(/\x00MD(\d+)\x00/g,(_,i)=>media[+i]);
+    s = s.replace(/\x00LK(\d+)\x00/g,(_,i)=>lk[+i]);
   if (blocks.length) {
     const th = blocks.map(b =>
       `<details class="think-block"><summary class="think-summary">◈ Reasoning</summary><div class="think-body">${escapeHtml(b)}</div></details>`
