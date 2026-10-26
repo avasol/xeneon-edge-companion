@@ -2,6 +2,9 @@
 
 All notable changes to the Xeneon Edge Companion widget will be documented in this file.
 
+## [1.4.8] - 2026-10-26
+- **THE PILLS, FELT**: the suggested-step buttons now sit directly under their reply instead of to the right of its first line, so they stay visible after the widget scrolls to the bottom of a long reply.
+
 ## [1.4.7] - 2026-10-26
 - **THE PILLS**: when a reply ends with a line of suggested next steps (`[[options: …]]`), the widget shows them as tap buttons; a tap sends that word as your reply. When you have written since, older buttons are retired, including after a history reload.
 
