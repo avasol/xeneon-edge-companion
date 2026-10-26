@@ -179,8 +179,8 @@ def test_every_infinite_animation_is_gated_on_a_state_class():
 
 def test_version_is_1_4_6_everywhere():
     v = re.search(r"const WIDGET_VERSION = '([\d.]+)';", HTML).group(1)
-    assert v == "1.4.6"
-    assert json.loads((ROOT / "manifest.json").read_text(encoding="utf-8"))["version"] == "1.4.6"
+    assert tuple(map(int, v.split("."))) >= (1, 4, 6)
+    assert json.loads((ROOT / "manifest.json").read_text(encoding="utf-8"))["version"] == v
     assert "## [1.4.6]" in (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
 
 

@@ -2,6 +2,9 @@
 
 All notable changes to the Xeneon Edge Companion widget will be documented in this file.
 
+## [1.4.7] - 2026-10-26
+- **THE PILLS**: when a reply ends with a line of suggested next steps (`[[options: …]]`), the widget shows them as tap buttons; a tap sends that word as your reply. When you have written since, older buttons are retired, including after a history reload.
+
 ## [1.4.6] - 2026-10-25
 - **STILL WATER restored**: an idle widget writes nothing. The SETTINGS row is no longer rewritten every 2 s when its text, colour and title are unchanged, the clock and session counter now update at most once a minute, and the typing dots animate only while visible.
 
