@@ -2,6 +2,9 @@
 
 All notable changes to the Xeneon Edge Companion widget will be documented in this file.
 
+## [1.4.9] - 2026-10-26
+- **THE OPEN DOORS**: bare web addresses in a reply (https://…) become tappable and open the link sheet, like Markdown links already did.
+
 ## [1.4.8] - 2026-10-26
 - **THE PILLS, FELT**: the suggested-step buttons now sit directly under their reply instead of to the right of its first line, so they stay visible after the widget scrolls to the bottom of a long reply.
 
