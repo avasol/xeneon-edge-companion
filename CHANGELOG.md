@@ -1,5 +1,8 @@
 # Changelog
 
+## [1.4.11] - 2026-10-27
+- **LONGER PILL LABELS**: a suggested-step button label may now be up to 80 characters (it was 40), so a reply whose options ran a little long shows its buttons instead of dead `[[options: …]]` text. Same change in all three copies (the body's `harness/pills.py`, the Tower, and this widget); the shared fixture gained the failing lines as cases.
+
 ## [1.4.10] - 2026-10-27
 - **ESCAPED PILLS**: a reply whose suggested-step line arrived with the brackets backslash-escaped (`\[\[options: … \]\]`, a markdown-safety reflex) now shows its buttons instead of dead text. The same grammar fix landed in all three copies (the body's `harness/pills.py`, the Tower, and this widget); the shared fixture now carries six escaped cases.
 

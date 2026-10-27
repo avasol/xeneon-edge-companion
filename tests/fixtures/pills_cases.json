@@ -45,9 +45,9 @@
   "options": []
  },
  {
-  "name": "long_label_invalid",
-  "text": "x\n[[options: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa]]",
-  "clean": "x\n[[options: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa]]",
+  "name": "label_81_invalid",
+  "text": "x\n[[options: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa]]",
+  "clean": "x\n[[options: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa]]",
   "options": []
  },
  {
@@ -149,6 +149,45 @@
   "clean": "mid",
   "options": [
    "Second"
+  ]
+ },
+ {
+  "name": "label_41_valid_now",
+  "text": "x\n[[options: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb | Hold]]",
+  "clean": "x",
+  "options": [
+   "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+   "Hold"
+  ]
+ },
+ {
+  "name": "label_80_valid",
+  "text": "x\n[[options: cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc]]",
+  "clean": "x",
+  "options": [
+   "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+  ]
+ },
+ {
+  "name": "real_reply_long_labels_valid",
+  "text": "Done.\n\n[[options: Answer the four questions and revoke the key | Next convoy items: duplicate render, worktree guard, header correction | Fix the 6 failing service tests | Hold]]",
+  "clean": "Done.",
+  "options": [
+   "Answer the four questions and revoke the key",
+   "Next convoy items: duplicate render, worktree guard, header correction",
+   "Fix the 6 failing service tests",
+   "Hold"
+  ]
+ },
+ {
+  "name": "long_labels_escaped_valid",
+  "text": "Done.\n\n\\[\\[options: Answer the four questions and revoke the key | Next convoy items: duplicate render, worktree guard, header correction | Fix the 6 failing service tests | Hold\\]\\]",
+  "clean": "Done.",
+  "options": [
+   "Answer the four questions and revoke the key",
+   "Next convoy items: duplicate render, worktree guard, header correction",
+   "Fix the 6 failing service tests",
+   "Hold"
   ]
  }
 ]
