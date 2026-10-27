@@ -2167,7 +2167,7 @@ function parsePills(text) {
     const trimmed = line.trim();
     if (trimmed.indexOf('```') === 0) { inFence = !inFence; kept.push(line); continue; }
     if (!inFence) {
-      const m = trimmed.match(/^\[\[options:(.*)\]\]$/);
+      const m = trimmed.match(/^\\?\[\\?\[options:(.*?)\\?\]\\?\]$/);
       if (m) {
         const parts = m[1].split('|').map(function (p) { return p.trim(); });
         const valid = parts.length >= 1 && parts.length <= 4 && parts.every(function (p) {
@@ -3129,7 +3129,7 @@ function restartPolling() {
   pollTimer = setInterval(poll, CFG.poll * 1000);
 }
 
-const WIDGET_VERSION = '1.4.9';
+const WIDGET_VERSION = '1.4.10';
 
 /* ── Input event wiring ── */
 $input.addEventListener('keydown', e => {

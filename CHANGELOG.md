@@ -1,5 +1,8 @@
 # Changelog
 
+## [1.4.10] - 2026-10-27
+- **ESCAPED PILLS**: a reply whose suggested-step line arrived with the brackets backslash-escaped (`\[\[options: … \]\]`, a markdown-safety reflex) now shows its buttons instead of dead text. The same grammar fix landed in all three copies (the body's `harness/pills.py`, the Tower, and this widget); the shared fixture now carries six escaped cases.
+
 All notable changes to the Xeneon Edge Companion widget will be documented in this file.
 
 ## [1.4.9] - 2026-10-26
