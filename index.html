@@ -2661,9 +2661,14 @@ async function sendMessage() {
             appendCost(galMsgs[galMsgs.length - 1]);
           } else {
             placeInThread(bubbleDiv.closest('.msg'));
-            bubbleText = evt.display_v || evt.v;
+            // Route the final streamed reply through the same pill parsing as
+            // the direct done / history paths (renderMsg): strip the raw
+            // [[options: …]] line from the bubble and render clickable pills.
+            const parsedDone = parsePills(evt.display_v || evt.v);
+            bubbleText = parsedDone.text;
             bubbleDiv.innerHTML = renderMarkdown(bubbleText, CFG.url);
             bubbleDiv.classList.remove('streaming-bubble');
+            if (parsedDone.options.length) renderPills(parsedDone.options, bubbleDiv);
             {
               const timeDiv = bubbleDiv.closest('div').parentElement.querySelector('.msg-time');
               appendCost(timeDiv);
@@ -3129,7 +3134,7 @@ function restartPolling() {
   pollTimer = setInterval(poll, CFG.poll * 1000);
 }
 
-const WIDGET_VERSION = '1.4.11';
+const WIDGET_VERSION = '1.4.12';
 
 /* ── Input event wiring ── */
 $input.addEventListener('keydown', e => {
